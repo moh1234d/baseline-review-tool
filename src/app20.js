@@ -57,7 +57,7 @@ function cmpAiCard() {
 document.addEventListener('click', e => { const t = e.target; let el;
   if ((el = t.closest('[data-cai]'))) { const k = el.dataset.cai; if (k === 'clear') { S.cmp.ai = null; S.cmp.aiErr = null; viewCompare(); } else cmpAiRun(k); return; }
   if ((el = t.closest('[data-cai-del]'))) { const a = S.cmp.ai; if (a && a.actions) { a.actions.actions.splice(+el.dataset.caiDel, 1); viewCompare(); } return; } });
-document.addEventListener('change', e => { const t = e.target; if (!t.matches) return; if (t.matches('[data-cai-inc]')) S.cmp.aiInc = t.checked; if (t.matches('[data-cai-use]')) { S.cfg.ai.cmp = t.checked; saveAiSettings(); viewCompare(); } });
+document.addEventListener('change', e => { const t = e.target; if (!t.matches) return; if (t.matches('[data-cai-inc]')) S.cmp.aiInc = t.checked; if (t.matches('[data-cai-use]')) { S.cfg.ai.cmp = t.checked; saveAiSettings(); renderNav(); viewCompare(); } });
 /* AI content for the Word report and the Excel appendix */
 function rpAiWord(ctx) { const a = cmpAiResult(); if (!a) return false; const { ch, P, bullet, H1, H2, grid, run, GREY } = ctx; const rv = a.review, ac = a.actions, cd = c => c && c.length ? ' [' + c.join(', ') + ']' : '';
   ch.push(H1('7. Claude-assisted review'));
@@ -76,3 +76,6 @@ function rpAiSheets(sheet) { const a = cmpAiResult(); if (!a) return; const rv =
 /* on/off switch, shown at the top of the comparison page (before any file is loaded). Default: OFF */
 function cmpAiSwitch() { const use = S.cfg.ai.cmp === true;
   return `<div class="card" style="margin-bottom:14px;border-left:4px solid ${use ? '#0B7A75' : '#9AA5B1'}"><label class="sw" style="margin:0"><input type="checkbox" data-cai-use="1" style="width:22px;height:22px;flex:none" ${use ? "checked" : ""}><span><b>Use Claude AI in this comparison</b> – ${use ? 'ON: after both schedules are loaded, a Claude review card appears with the review and suggestion buttons.' : 'OFF (default): no AI step runs, nothing is sent to Anthropic, and no AI text goes into the report or appendix.'}${use && !(S.cfg.ai.on && S.cfg.ai.key && S.cfg.ai.consent) ? ' <span class="hint">Also needs the key and consent in Setup → AI.</span>' : ''}</span></label></div>`; }
+
+/* ===== v6.0 shell: phone menu ===== */
+document.addEventListener('click', e => { const t = e.target; if (t.closest && t.closest('#tb-menu')) { document.body.classList.toggle('navopen'); return; } if (document.body.classList.contains('navopen') && !(t.closest && t.closest('#nav') && !t.closest('[data-go]'))) document.body.classList.remove('navopen'); });

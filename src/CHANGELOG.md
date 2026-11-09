@@ -1,3 +1,8 @@
+## v6.0
+- New design: grouped sidebar (Review, Compare and analyse, Build and verify), top bar with the version number, project name and AI status always visible, new colours and type.
+- Schedule comparison and Quick review use the new layout: inputs on the left, results on the right. Phone: stacked, with a menu button.
+- Other screens use the new frame and styling; their layouts follow in later versions.
+
 ## v5.23
 - Schedule comparison: Save comparison button (named with both schedules and the date; keeps the two XER files, delay settings and any Claude review) and Open saved comparison.
 

@@ -37,9 +37,9 @@ function viewQuick() {
     <section class="card"><h2>Schedule (XER)</h2>${drop('q-xer', '.xer,.txt', false, 'Choose the P6 XER file')}<div class="actions"><label class="btn" for="q-open">Open a saved project</label><input type="file" id="q-open" accept=".brtq,.brt,.json" hidden></div><p class="hint">Everything is read locally in your browser. Nothing is sent anywhere.</p></section>`; return;
   }
   const q = S.qk.q || qCompute();
-  $('#main').innerHTML = `<header class="ph"><h1>Quick review</h1><p>${esc(S.xerName || 'XER')} · ${fmtN(q.over.tasks)} activities · data date ${esc(E.fmtDate(q.over.dataDate))}</p></header>
-  <div class="actions" style="margin-top:0"><button class="btn primary" data-qx="xlsx">Download quick review (Excel)</button><button class="btn" data-qsave="1">Save project</button><label class="btn" for="q-open">Open saved project</label><input type="file" id="q-open" accept=".brtq,.brt,.json" hidden>${drop('q-xer', '.xer,.txt', false, 'Load a different XER').replace('class="drop"', 'class="drop" style="flex-direction:row;padding:8px 14px;gap:8px"')}</div>
-  <div class="tabs">${QTABS.map(([k, t]) => `<button data-qtab="${k}" class="${S.qk.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div><div id="q-body"></div>`;
+  $('#main').classList.add('wide'); $('#main').innerHTML = `<div class="split"><aside class="pane-in"><div class="lbl">SCHEDULE</div><div class="fileb"><b>${esc(S.xerName || 'XER')}</b><small>${fmtN(q.over.tasks)} activities · data date ${esc(E.fmtDate(q.over.dataDate))}</small></div>${drop('q-xer', '.xer,.txt', false, 'Load a different XER')}
+  <div class="lbl">ACTIONS</div><div class="actions stack" style="margin:0"><button class="btn primary" data-qx="xlsx">Download quick review (Excel)</button><button class="btn" data-qsave="1">Save project</button><label class="btn" for="q-open">Open saved project</label><input type="file" id="q-open" accept=".brtq,.brt,.json" hidden></div></aside>
+  <div class="pane-out"><div class="tabs">${QTABS.map(([k, t]) => `<button data-qtab="${k}" class="${S.qk.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div><div id="q-body"></div></div></div>`;
   qRenderTab(); if (!S.qk.rules) setTimeout(() => { qRules(); if (S.step === 'quick' && S.qk.tab === 'over') qRenderTab(); }, 60);
 }
 function qRenderTab() {

@@ -6,12 +6,23 @@ const sel = (label, path, opts, extra) => { const v = getPath(S.cfg, path); retu
 const STEPS = [['setup', 'Project setup'], ['files', 'Load files'], ['confirm', 'Confirmations'], ['run', 'Run checks'], ['report', 'Report']];
 const durationDays = () => { const c = S.cfg; if (!c.durationValue) return null; return c.durationUnit === 'months' ? Math.round(c.durationValue * 30.4375) : +c.durationValue; };
 
+const NAV_GROUPS = [
+  ['Review', [['quick', '⚡', 'Quick review · XER only']], 'full'],
+  ['Compare and analyse', [['compare', '⇄', 'Schedule comparison'], ['delay', '⏱', 'Delay analysis'], ['claims', '⚖', 'Claim review']]],
+  ['Build and verify', [['builder', '🏗', 'Baseline builder'], ['roundtrip', '↔', 'P6 roundtrip check']]]];
+function navTitle() {
+  for (const [g, items] of NAV_GROUPS) { const it = items.find(x => x[0] === S.step); if (it) return [g, it[2]]; }
+  const st = STEPS.findIndex(x => x[0] === S.step); return ['Review / Full review', st >= 0 ? (st + 1) + ' · ' + STEPS[st][1] : ''];
+}
 function renderNav() {
   const done = { setup: !!S.cfg.projectName, files: !!S.M, confirm: !!S.M, run: !!S.out, report: !!S.out };
-  $('#steps').innerHTML = `<button class="step qk ${S.step === 'quick' ? 'on' : ''}" data-go="quick"><i>⚡</i><span>Quick review · XER only</span></button><button class="step qk ${S.step === 'compare' ? 'on' : ''}" data-go="compare"><i>⇄</i><span>Schedule comparison</span></button><button class="step qk ${S.step === 'delay' ? 'on' : ''}" data-go="delay"><i>⏱</i><span>Delay analysis</span></button><button class="step qk ${S.step === 'builder' ? 'on' : ''}" data-go="builder"><i>🏗</i><span>Baseline builder</span></button><button class="step qk ${S.step === 'claims' ? 'on' : ''}" data-go="claims"><i>⚖</i><span>Claim review</span></button><button class="step qk ${S.step === 'roundtrip' ? 'on' : ''}" data-go="roundtrip"><i>↔</i><span>P6 roundtrip check</span></button><div class="sepl">Full review</div>` + STEPS.map(([k, t], i) => `<button class="step ${S.step === k ? 'on' : ''} ${done[k] ? 'done' : ''}" data-go="${k}"><i>${i + 1}</i><span>${t}</span></button>`).join('');
+  const item = ([k, ic, t]) => `<button class="step ${S.step === k ? 'on' : ''}" data-go="${k}"><i>${ic}</i><span>${t}</span></button>`;
+  $('#steps').innerHTML = NAV_GROUPS.map(([g, items, full]) => `<div class="sepl">${g}</div>` + items.map(item).join('') + (full ? `<div class="sepl sub">Full review</div>` + STEPS.map(([k, t], i) => `<button class="step ${S.step === k ? 'on' : ''} ${done[k] ? 'done' : ''}" data-go="${k}"><i>${i + 1}</i><span>${t}</span></button>`).join('') : '')).join('');
   $('#projname').textContent = S.cfg.projectName || 'New project';
+  const [g, t] = navTitle(); $('#tb-group').textContent = g; $('#tb-title').textContent = t; $('#tb-proj').textContent = S.cfg.projectName || 'No project name';
+  const ai = !!(S.cfg.ai && S.cfg.ai.cmp === true); $('#tb-ai').textContent = ai ? 'AI on' : 'AI off'; $('#tb-ai').className = 'tbchip' + (ai ? ' on' : '');
 }
-function go(step) { S.step = step; renderNav(); const f = { setup: viewSetup, files: viewFiles, confirm: viewConfirm, run: viewRun, report: viewReport, quick: viewQuick, compare: viewCompare, delay: viewDelay, builder: viewBuilder, claims: viewClaims, roundtrip: viewRoundtrip }[step]; $('#main').scrollTop = 0; window.scrollTo(0, 0); f(); }
+function go(step) { S.step = step; $('#main').classList.remove('wide'); renderNav(); const f = { setup: viewSetup, files: viewFiles, confirm: viewConfirm, run: viewRun, report: viewReport, quick: viewQuick, compare: viewCompare, delay: viewDelay, builder: viewBuilder, claims: viewClaims, roundtrip: viewRoundtrip }[step]; $('#main').scrollTop = 0; window.scrollTo(0, 0); f(); }
 
 /* ---------------- 1. SETUP ---------------- */
 function viewSetup() {
