@@ -11,9 +11,9 @@ No XER, BOQ, contract, report or saved-project files belong in this repository (
     npm ci
     python3 build.py      # writes dist/index.html
 
-## Deploy (Cloudflare Pages, built from this repo)
+## Deploy (Cloudflare Workers static assets, built from this repo)
 - Build command: `npm ci && python3 build.py`
-- Build output directory: `dist`
+- Deploy command: `npx wrangler deploy` (reads `wrangler.jsonc`, serves `dist`)
 - Protect the site with Cloudflare Access (Zero Trust) so only named users can open it.
 
 Source is in `src/` (engine*.js = calculations, app*.js = screens). Version is in `src/VERSION`; add a line to `src/CHANGELOG.md` for every change.
