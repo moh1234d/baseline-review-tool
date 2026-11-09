@@ -1,0 +1,16 @@
+{
+  "name": "baseline-review-tool",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Single-file P6 schedule review tool; the build embeds the libraries so the tool also works offline.",
+  "scripts": {
+    "build": "python3 build.py"
+  },
+  "dependencies": {
+    "docx": "8.5.0",
+    "exceljs": "4.4.0",
+    "jszip": "3.10.1",
+    "pdfjs-dist": "3.11.174",
+    "xlsx": "0.18.5"
+  }
+}

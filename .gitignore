@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.xer
+*.brt
+*.brtq
+*.xlsx
+*.xls
+*.docx
+*.pdf
+*.env
+.dev.vars
