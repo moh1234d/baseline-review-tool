@@ -1,3 +1,7 @@
+## v6.5
+- Delay analysis and P6 roundtrip check now use the new layout (files and settings on the left, results on the right; stacked on a phone).
+- Claim review, Baseline builder and the Full review steps keep their current inner layout for now (they are forms and long flows), with the new frame and styling.
+
 ## v6.4
 Recalculation rules (recovery scenarios and recalculated gain), from the independent review.
 - Start milestones take no time (the successor starts the same day); a finish milestone takes the finish day of its predecessor. Before, every milestone cost a day.

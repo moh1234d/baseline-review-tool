@@ -137,17 +137,18 @@ function dlDrivingHtml(L, win) {
 }
 function viewDelay() {
   const D = S.dl, r = D.res, all = dlModels(), last = all[all.length - 1];
-  let h = `<header class="ph"><h1>Delay analysis</h1><p>Find which activities are driving the finish and which are delayed, on the longest path and on the next most critical paths. Delay assessment only: no entitlement or extension of time is assessed. Load the baseline and the progress update(s).</p></header>
-  <div class="actions" style="margin-top:0"><label class="btn" for="q-open">Open saved project</label><input type="file" id="q-open" accept=".brtq,.brt,.json" hidden>${all.length ? '<button class="btn" data-qsave="1">Save project</button>' : ''}${r ? '<button class="btn primary" data-dr="1">Download narrative report (Word)</button><button class="btn" data-dx="1">Download findings (Excel)</button>' : ''}</div>
+  $('#main').classList.add('wide'); let h = `<div class="split${r ? ' has-res' : ''}"><aside class="pane-in">
+  <div class="actions stack" style="margin-top:0"><label class="btn" for="q-open">Open saved project</label><input type="file" id="q-open" accept=".brtq,.brt,.json" hidden>${all.length ? '<button class="btn" data-qsave="1">Save project</button>' : ''}${r ? '<button class="btn primary" data-dr="1">Download narrative report (Word)</button><button class="btn" data-dx="1">Download findings (Excel)</button>' : ''}</div>
   <section class="card"><h2>Method</h2><div class="seg2"><button class="${D.mode === 'A' ? 'on' : ''}" data-dmode="A"><b>Option A · Baseline vs update</b><small>Simple. Traces the driving path in the update and measures how far each activity moved from the baseline.</small></button><button class="${D.mode === 'B' ? 'on' : ''}" data-dmode="B"><b>Option B · Windows analysis</b><small>Professional. Load the baseline and several updates in order. Each period (window) is analysed on its own, with the critical path as it stood at its start.</small></button></div></section>
-  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;margin-bottom:18px">
+  <div class="grid" style="grid-template-columns:1fr;gap:12px;margin-bottom:0">
   <div class="card" style="margin:0"><h2>Baseline ${D.base ? qchip('Loaded', 'ok') : ''}</h2><p class="hint" style="margin-top:0">The approved baseline XER (or the earliest schedule you want to measure from).</p>${D.base ? `<div class="kv" style="margin:0 0 12px"><span>File <b style="font-size:14px">${esc(D.base.name)}</b></span><span>Data date <b style="font-size:14px">${esc(E.fmtDate(D.base.M.dataDate))}</b></span><span>Finish <b style="font-size:14px">${esc(E.fmtDate(D.base.M.maxEF))}</b></span></div>` : ''}${drop('d-base', '.xer,.txt', false, D.base ? 'Replace the baseline' : 'Choose the baseline XER')}</div>
   <div class="card" style="margin:0"><h2>Progress update${D.mode === 'B' ? 's' : ''} ${D.ups.length ? qchip(D.ups.length + ' loaded', 'ok') : ''}</h2><p class="hint" style="margin-top:0">${D.mode === 'B' ? 'Add every update in the period. They are sorted by data date automatically.' : 'The current progress update. Several can be loaded – pick the one to analyse below.'}</p>${D.ups.length ? `<div class="dlist">${D.ups.map((u, i) => `<div><b>${i + 1}.</b> <span>${esc(u.name)}</span><small>data date ${esc(E.fmtDate(u.M.dataDate))} · finish ${esc(E.fmtDate(u.M.maxEF))}</small><button class="btn sm" data-drm="${i}">Remove</button></div>`).join('')}</div>` : ''}${drop('d-ups', '.xer,.txt', true, D.ups.length ? 'Add more updates' : 'Choose the update XER' + (D.mode === 'B' ? 's' : ''))}</div></div>`;
   if (last) {
     const tg = E.dlTargets(last.M);
     h += `<section class="card"><h2>What to analyse</h2><div class="dlset"><label>Delay to <select id="d-target">${tg.map(t => `<option value="${esc(t.code)}" ${t.code === D.target ? 'selected' : ''}>${esc(t.code)} – ${esc(dtr(t.name, 60))} (${E.fmtDate(t.ef)})</option>`).join('')}</select></label><label>Ignore movements under <select id="d-min">${[1, 2, 3, 5, 7].map(n => `<option value="${n}" ${n === D.min ? 'selected' : ''}>${n} day${n > 1 ? 's' : ''}</option>`).join('')}</select></label><label>Paths to analyse <select id="d-n">${[1, 2, 3, 4, 5].map(n => `<option ${n === D.n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>${D.mode === 'A' && D.ups.length > 1 ? `<label>Update to analyse <select id="d-up">${D.ups.map(u => `<option value="${esc(u.name)}" ${D.upUsed && u.name === D.upUsed.name ? 'selected' : ''}>${esc(u.name)} (${esc(E.fmtDate(u.M.dataDate))})</option>`).join('')}</select></label>` : ''}</div><p class="hint">Small movements (a day or two caused by weekends and holidays) are ignored so only real delay events show. Path 1 is the longest (driving) path to the chosen activity. Paths 2 to ${D.n} are the next most critical paths, found from the lowest total float.</p></section>`;
   }
-  if (!r) { $('#main').innerHTML = h + `<p class="hint">${!D.base ? 'Load the baseline to start.' : !D.ups.length ? 'Load at least one progress update.' : ''}</p>`; return; }
+  h += `</aside><div class="pane-out">`;
+  if (!r) { $('#main').innerHTML = h + `<section class="card"><h2>Delay analysis</h2><p class="hint" style="margin-top:0">Find which activities are driving the finish and which are delayed, on the longest path and on the next most critical paths. Delay assessment only: no entitlement or extension of time is assessed. Load the baseline and the progress update(s).</p><p class="hint"><b>${!D.base ? 'Load the baseline to start.' : !D.ups.length ? 'Load at least one progress update.' : ''}</b></p></section></div></div>`; return; }
   const wy = window.scrollY;
   const warnAll = (r.baseWarn || []).map(w => `<div class="warnbox">${esc(w)}</div>`).join('');
   if (r.mode === 'A') {
@@ -175,7 +176,7 @@ function viewDelay() {
     });
     h += `<section class="card"><h2>Data checks</h2>${dlIntegrityHtml(r.integrity)}</section>`;
   }
-  $('#main').innerHTML = h; window.scrollTo(0, wy);
+  $('#main').innerHTML = h + '</div></div>'; window.scrollTo(0, wy);
 }
 function dlEventsAll(r) { return dlEventRows(r); }
 
