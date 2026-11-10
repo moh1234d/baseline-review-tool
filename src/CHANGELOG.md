@@ -1,3 +1,6 @@
+## v6.6
+- The online site now asks for a password (checked on the server by a Cloudflare Worker, not in the page). The password is a Cloudflare secret named BRT_PASSWORD and can be changed there without touching the code; any user name is accepted. If the secret is missing the site stays closed.
+
 ## v6.5
 - Delay analysis and P6 roundtrip check now use the new layout (files and settings on the left, results on the right; stacked on a phone).
 - Claim review, Baseline builder and the Full review steps keep their current inner layout for now (they are forms and long flows), with the new frame and styling.

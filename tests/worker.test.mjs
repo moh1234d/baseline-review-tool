@@ -1,0 +1,10 @@
+import assert from 'assert'; import w, { check } from '../worker/index.js';
+const req = (pw) => new Request('https://x/', { headers: pw == null ? {} : { Authorization: 'Basic ' + btoa('any:' + pw) } });
+const env = { BRT_PASSWORD: 'secret1', ASSETS: { fetch: async () => new Response('page') } };
+assert.strictEqual((await check(req(null), env)).status, 401);
+assert.strictEqual((await check(req('wrong'), env)).status, 401);
+assert.strictEqual(await check(req('secret1'), env), null);
+assert.strictEqual((await check(req('secret1'), {})).status, 503);
+assert.strictEqual(await (await w.fetch(req('secret1'), env)).text(), 'page');
+assert.strictEqual((await w.fetch(req('nope'), env)).status, 401);
+console.log('worker: 6 checks passed');
