@@ -7,7 +7,7 @@ const STEPS = [['setup', 'Project setup'], ['files', 'Load files'], ['confirm', 
 const durationDays = () => { const c = S.cfg; if (!c.durationValue) return null; return c.durationUnit === 'months' ? Math.round(c.durationValue * 30.4375) : +c.durationValue; };
 
 const NAV_GROUPS = [
-  ['Review', [['quick', '⚡', 'Quick review · XER only']], 'full'],
+  ['Review', [['portfolio', '☰', 'Portfolio triage'], ['quick', '⚡', 'Quick review · XER only']], 'full'],
   ['Compare and analyse', [['compare', '⇄', 'Schedule comparison'], ['delay', '⏱', 'Delay analysis'], ['claims', '⚖', 'Claim review']]],
   ['Build and verify', [['builder', '🏗', 'Baseline builder'], ['roundtrip', '↔', 'P6 roundtrip check']]]];
 function navTitle() {
@@ -22,7 +22,7 @@ function renderNav() {
   const [g, t] = navTitle(); $('#tb-group').textContent = g; $('#tb-title').textContent = t; $('#tb-proj').textContent = S.cfg.projectName || 'No project name';
   const ai = !!(S.cfg.ai && S.cfg.ai.cmp === true); $('#tb-ai').textContent = ai ? 'AI on' : 'AI off'; $('#tb-ai').className = 'tbchip' + (ai ? ' on' : '');
 }
-function go(step) { S.step = step; $('#main').classList.remove('wide'); renderNav(); const f = { setup: viewSetup, files: viewFiles, confirm: viewConfirm, run: viewRun, report: viewReport, quick: viewQuick, compare: viewCompare, delay: viewDelay, builder: viewBuilder, claims: viewClaims, roundtrip: viewRoundtrip }[step]; $('#main').scrollTop = 0; window.scrollTo(0, 0); f(); }
+function go(step) { S.step = step; $('#main').classList.remove('wide'); renderNav(); const f = { setup: viewSetup, files: viewFiles, confirm: viewConfirm, run: viewRun, report: viewReport, quick: viewQuick, portfolio: viewPortfolio, compare: viewCompare, delay: viewDelay, builder: viewBuilder, claims: viewClaims, roundtrip: viewRoundtrip }[step]; $('#main').scrollTop = 0; window.scrollTo(0, 0); f(); }
 
 /* ---------------- 1. SETUP ---------------- */
 function viewSetup() {

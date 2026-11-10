@@ -1,3 +1,8 @@
+## v7.0
+Portfolio triage.
+- New screen under Review: drop the XER files of several projects at once. Each is checked with the standard settings, one after another (memory is released between files), and one ranked table shows activities, data date, finish, % complete, major and other findings, negative-float and open-end counts, and the main issues. Download as Excel.
+- The ranking is 3 x major findings + other findings. It tells you which project to open first; it is not a quality grade. Project-specific settings (contract dates, WBS mapping) are not applied here.
+
 ## v6.9
 Update checks and carry-over of findings.
 - New "Update checks" section in the schedule comparison: baseline execution index (BEI), critical path length index (CPLI), missed activities, out-of-sequence progress, remaining duration against physical percent complete, and actual dates after the data date. These are indicators for the reviewer, not conclusions.
