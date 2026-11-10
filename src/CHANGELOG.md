@@ -1,3 +1,9 @@
+## v6.4
+Recalculation rules (recovery scenarios and recalculated gain), from the independent review.
+- Start milestones take no time (the successor starts the same day); a finish milestone takes the finish day of its predecessor. Before, every milestone cost a day.
+- In-progress activities keep their actual start, and their remaining work now waits for its predecessors (retained logic). Progress override is honoured when the XER says so (Schedule options). Before, in-progress work ignored its predecessors, so gains upstream never reached it.
+- Automated checks added (npm test): milestones, in-progress logic, level of effort, constraints.
+
 ## v6.3
 - New setting in Delay analysis settings: "The request is addressed to" - Contractor, Consultant or PMC (internal). It changes the section title, the intro, the requested actions, the draft wording, the next-step bullets, the executive brief ("We need" row) and the appendix sheet. The reservation line is added for Contractor and Consultant, not for the internal PMC version.
 
