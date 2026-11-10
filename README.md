@@ -2,7 +2,7 @@
 
 Single-file P6 schedule review tool (schedule comparison, delay analysis, baseline builder, claim review, P6 roundtrip).
 The tool runs entirely in the browser: schedules and documents are processed on the user's device and are not uploaded to the host.
-The only network call is the optional Claude AI step, which sends the text shown in that step to Anthropic, only when the user switches AI on and gives consent.
+The only network call is the optional Claude AI step, only when the user switches AI on and gives consent. Schedule comparison sends codes, names, dates and days. Full-review steps can also send contract text, BOQ pages (with rates and amounts), a layout drawing and the narrative; the consent text in Setup lists this. Check the Employer allows it before using those steps.
 
 ## Do not commit project data
 No XER, BOQ, contract, report or saved-project files belong in this repository (`.gitignore` blocks the common types).

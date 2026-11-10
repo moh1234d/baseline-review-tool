@@ -34,7 +34,7 @@ function viewCompare() {
   const hl = (title, big, sub, tone) => `<div class="vt ${tone || 'info'}"><span>${title}</span><b>${big}</b><small>${sub}</small></div>`;
   const fin = ov.finishDelta; const added = (sec('acts').blocks[0] || { rows: [] }).rows.length, deleted = (sec('acts').blocks[1] || { rows: [] }).rows.length;
   const critF = fact('crit', 'Critical activities'), budF = fact('res', 'Budget');
-  h += `${sec('over').different ? `<div class="warnbox">These two files have different project names (“${esc(A.proj.proj_short_name || '')}” and “${esc(B.proj.proj_short_name || '')}”). Check that you loaded the right pair.</div>` : ''}
+  h += `${r.delayError ? `<div class="warnbox">The delay and recovery sections could not be built (${esc(r.delayError)}). The rest of the comparison is unaffected.</div>` : ''}${sec('over').different ? `<div class="warnbox">These two files have different project names (“${esc(A.proj.proj_short_name || '')}” and “${esc(B.proj.proj_short_name || '')}”). Check that you loaded the right pair.</div>` : ''}
   <section class="card"><h2>What changed <small>${esc(S.cmp.A.name)} → ${esc(S.cmp.B.name)}</small></h2>
   <div class="verd">${hl('Project finish', fin === 0 ? 'No change' : sg(fin) + ' days', E.fmtDate(A.maxEF) + ' → ' + E.fmtDate(B.maxEF), fin > 0 ? 'bad' : fin < 0 ? 'ok' : 'info')}
   ${hl('Data date', ov.dataDelta == null ? '–' : sg(ov.dataDelta) + ' days', E.fmtDate(A.dataDate) + ' → ' + E.fmtDate(B.dataDate), 'info')}

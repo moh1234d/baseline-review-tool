@@ -17,7 +17,7 @@ E.delayAnalysis = function (R, c) {
   const row = x => [x.b.code, x.b.name, x.b.wbsPath, ST[x.b.status] || '', dd(refE(x.a)), dd(x.b.ef), T(sgn(Math.round(x.slip)), 'bad'), x.sslip == null ? '' : sgn(Math.round(x.sslip)), fl(x.b), cause(x)];
   const cols = ['ID', 'Activity', 'WBS', 'Status', base ? 'Baseline finish' : 'Previous finish', 'Current finish', 'Finish slip (d)', 'Start slip (d)', 'Float (cal. d)', 'Likely cause'];
   // driving path
-  const pathOf = (M, ov, dt) => { const ES = t => dt && dt.es.has(t.id) ? dt.es.get(t.id) : t.es, EF = t => dt && dt.ef.has(t.id) ? dt.ef.get(t.id) : t.ef, cand = M.tasks.filter(t => EF(t) != null); if (!cand.length) return []; let end = cand[0]; for (const t of cand) if (EF(t) > EF(end) || (EF(t) === EF(end) && (t.tfWd != null && end.tfWd != null && t.tfWd < end.tfWd))) end = t;
+  const pathOf = (M, ov, dt) => { const ES = t => dt && dt.es.has(t.id) ? dt.es.get(t.id) : t.es, EF = t => dt && dt.ef.has(t.id) ? dt.ef.get(t.id) : t.ef, cand = M.tasks.filter(t => EF(t) != null && t.type !== 'TT_LOE' && t.type !== 'TT_WBS'); if (!cand.length) return []; let end = cand[0]; for (const t of cand) if (EF(t) > EF(end) || (EF(t) === EF(end) && (t.tfWd != null && end.tfWd != null && t.tfWd < end.tfWd))) end = t;
     const rev = [], seen = new Set(); let t = end, lin = null;
     while (t && !seen.has(t.id) && rev.length < d.maxPath) { seen.add(t.id); rev.push({ t, lin }); let best = null, bg = Infinity;
       for (const l of t.pre) { const p = l.from; if (ES(p) == null || EF(p) == null || ES(t) == null) continue; const wdw = ((M.cal[p.clndr] || {}).wdw) || 6, cs = (ov && ov.get(l)) || [{ type: l.type, lagWd: l.lagWd }];

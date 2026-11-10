@@ -1,3 +1,13 @@
+## v6.1
+Fixes from the independent review of v6.0.
+- Phone: the menu button was hidden by a later style rule, so no other screen could be reached. Fixed.
+- Updates: actual start and finish dates are now used for started and completed work (they were read only from early dates, which P6 may leave blank for completed work).
+- XER with no resources, calendars, WBS or relationships now loads instead of failing.
+- Recalculation: level-of-effort and WBS-summary activities no longer hold the finish; start constraints matched exactly (start on or before is no longer treated as a floor).
+- If the delay and recovery sections cannot be built, a warning now says so instead of hiding them.
+- The AI consent text and README now list everything the Full-review steps can send (contract text, BOQ rates, drawings, narrative).
+- The Google font request was removed, so the tool makes no network call unless AI is used.
+
 ## v6.0
 - New design: grouped sidebar (Review, Compare and analyse, Build and verify), top bar with the version number, project name and AI status always visible, new colours and type.
 - Schedule comparison and Quick review use the new layout: inputs on the left, results on the right. Phone: stacked, with a menu button.
