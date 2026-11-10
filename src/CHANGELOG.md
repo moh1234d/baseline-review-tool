@@ -1,3 +1,6 @@
+## v6.3
+- New setting in Delay analysis settings: "The request is addressed to" - Contractor, Consultant or PMC (internal). It changes the section title, the intro, the requested actions, the draft wording, the next-step bullets, the executive brief ("We need" row) and the appendix sheet. The reservation line is added for Contractor and Consultant, not for the internal PMC version.
+
 ## v6.2
 Wording that goes to contractors, from the independent review.
 - Recovery request: the tool's options are now worded as options for the contractor to propose against, not instructions ("Propose how to finish ... sooner (for example about 50% more crews)").
