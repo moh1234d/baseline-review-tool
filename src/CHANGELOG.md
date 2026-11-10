@@ -1,3 +1,7 @@
+## v7.1
+Wording per client.
+- Project setup has three new text fields: the name of the contract conditions used in citations, the calendar clause cited in the calendar checks, and the approving party named in the approval checks. The defaults are the previous wording (Particular Conditions, A8.2, KEC / authority), so existing projects read the same. They are saved with the project.
+
 ## v7.0
 Portfolio triage.
 - New screen under Review: drop the XER files of several projects at once. Each is checked with the standard settings, one after another (memory is released between files), and one ranked table shows activities, data date, finish, % complete, major and other findings, negative-float and open-end counts, and the main issues. Download as Excel.

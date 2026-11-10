@@ -79,7 +79,7 @@ E.run = function (M, cfg) {
     }
   }
   { // C3 milestones
-    const c = add({ id: 'T3', group: 'Contract & time', title: 'Contractual milestones are scheduled on their contract dates', rule: 'Each contractual milestone must exist in the schedule and fall on its contractual date.', source: 'Particular Conditions – milestones' });
+    const c = add({ id: 'T3', group: 'Contract & time', title: 'Contractual milestones are scheduled on their contract dates', rule: 'Each contractual milestone must exist in the schedule and fall on its contractual date.', source: (cfg.srcPC || 'Particular Conditions') + ' – milestones' });
     const ms = cfg.milestones || [];
     if (!ms.length) { c.status = 'notrun'; c.summary = 'No contractual milestones entered.'; }
     else {
@@ -96,7 +96,7 @@ E.run = function (M, cfg) {
     }
   }
   { // C4 review periods
-    const c = add({ id: 'T4', group: 'Contract & time', title: 'Approval durations match the contract review period', rule: 'Submittal/approval activities selected as KEC/authority approvals must carry the contractual review period.', source: 'Particular Conditions – review periods' });
+    const c = add({ id: 'T4', group: 'Contract & time', title: 'Approval durations match the contract review period', rule: 'Submittal/approval activities selected as ' + (cfg.approverLabel || 'KEC/authority') + ' approvals must carry the contractual review period.', source: (cfg.srcPC || 'Particular Conditions') + ' – review periods' });
     const ap = [...approvalSet].map(i => M.byId[i]).filter(Boolean);
     if (!cfg.reviewDays) { c.status = 'notrun'; c.summary = 'Contract review period not entered.'; }
     else if (!ap.length) { c.status = 'notrun'; c.summary = 'No approval activities selected.'; }
@@ -194,7 +194,7 @@ E.run = function (M, cfg) {
   /* ---- L10 calendars ---- */
   const calName = id => (M.cal[id] || {}).name || id;
   { // assignment
-    const c = add({ id: 'L10a', group: 'Calendars', title: 'Activities use the calendar of their category', rule: 'Construction, engineering/submittals, mobilization and close-out: ' + cfg.calRules.construction + '-day week; selected KEC/authority approvals: ' + cfg.calRules.approval + '-day week (Fri & Sat off); material delivery: ' + cfg.calRules.delivery + '-day week. Category is taken from the WBS.', source: 'Particular Conditions A8.2' });
+    const c = add({ id: 'L10a', group: 'Calendars', title: 'Activities use the calendar of their category', rule: 'Construction, engineering/submittals, mobilization and close-out: ' + cfg.calRules.construction + '-day week; selected ' + (cfg.approverLabel || 'KEC/authority') + ' approvals: ' + cfg.calRules.approval + '-day week (Fri & Sat off); material delivery: ' + cfg.calRules.delivery + '-day week. Category is taken from the WBS.', source: cfg.calClause || 'Particular Conditions A8.2' });
     for (const t of nonMile) {
       const key = approvalSet.has(t.id) ? 'approval' : t.cat; const want = cfg.calRules[key]; const cal = M.cal[t.clndr]; if (!cal || !want) continue;
       let ok = cal.wdw === want; if (ok && want === 5) ok = !cal.dow[6] && !cal.dow[7];
@@ -216,7 +216,7 @@ E.run = function (M, cfg) {
     c.count = c.items.length; c.status = c.count ? 'fail' : 'pass'; c.summary = c.count ? c.count + ' unusual calendars.' : used.size + ' calendars in use, all acceptable.'; c.action = 'Correct the calendar definition.';
   }
   { // holidays
-    const c = add({ id: 'L10c', group: 'Calendars', title: 'Public holidays are non-working days', rule: 'Every calendar must show National Day (23 Sep), Founding Day (22 Feb) and the Eid al-Fitr / Eid al-Adha ranges as non-working days within the project window.', source: 'Particular Conditions A8.2' });
+    const c = add({ id: 'L10c', group: 'Calendars', title: 'Public holidays are non-working days', rule: 'Every calendar must show National Day (23 Sep), Founding Day (22 Feb) and the Eid al-Fitr / Eid al-Adha ranges as non-working days within the project window.', source: cfg.calClause || 'Particular Conditions A8.2' });
     const y0 = new Date(M.minES * MS).getUTCFullYear(), y1 = new Date(M.maxEF * MS).getUTCFullYear();
     const hol = [];
     for (let y = y0; y <= y1; y++) for (const f of E.FIXED_HOLIDAYS) hol.push({ day: Math.floor(Date.UTC(y, f.m - 1, f.d) / MS), name: f.name });

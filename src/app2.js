@@ -37,6 +37,9 @@ function viewSetup() {
     <label class="f"><span>Contract duration</span><span class="inl"><input data-p="durationValue" data-t="num" type="number" step="any" value="${esc(c.durationValue || '')}"><select data-p="durationUnit" data-t="str"><option value="months" ${c.durationUnit === 'months' ? 'selected' : ''}>months</option><option value="days" ${c.durationUnit === 'days' ? 'selected' : ''}>days</option></select></span></label>
     ${fld('Notice to proceed / commencement date', 'ntp', 'date')}
     ${fld('Contract review period for submittals (days)', 'reviewDays', 'num')}
+    ${fld('Name of the contract conditions in citations (e.g. Particular Conditions)', 'srcPC', 'text', 'placeholder="Particular Conditions"')}
+    ${fld('Calendar clause cited in calendar checks (e.g. Particular Conditions A8.2)', 'calClause', 'text', 'placeholder="Particular Conditions A8.2"')}
+    ${fld('Approving party named in approval checks (e.g. KEC / authority)', 'approverLabel', 'text', 'placeholder="KEC / authority"')}
     ${fld('Contract clause on float ownership (optional, quoted in check T2)', 'floatClause', 'text', 'placeholder="leave empty if the contract has none"')}
     ${sel('Project type', 'projectType', [['infrastructure', 'Infrastructure (labour + equipment required)'], ['buildings', 'Buildings (labour only)']])}
     ${sel('File being reviewed', 'fileType', [['baseline', 'Baseline submission'], ['update', 'Progress update']])}
@@ -52,7 +55,7 @@ function viewSetup() {
     ${fld('Cost / total tolerance (%)', 'costTol', 'num')}${fld('Phase-weight tolerance (percentage points)', 'weightTol', 'num')}${fld('Monthly curve tolerance (%)', 'curveTol', 'num')}${fld('Examples per comment in Word report', 'examples', 'int')}
   </div></section>
   <section class="card"><h2>Working week by category</h2><p class="hint">Days per week the calendar must have. Categories come from the WBS (Confirmations).</p><div class="grid g4">
-    ${['construction', 'engineering', 'mobilization', 'closeout', 'general', 'procurement', 'delivery', 'approval'].map(k => `<label class="f"><span>${({ approval: 'KEC / authority approvals (Fri &amp; Sat off)', delivery: 'Material delivery', closeout: 'Close-out / handover', general: 'General' })[k] || k[0].toUpperCase() + k.slice(1)}</span><select data-p="calRules.${k}" data-t="int">${[5, 6, 7].map(n => `<option ${c.calRules[k] === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`).join('')}
+    ${['construction', 'engineering', 'mobilization', 'closeout', 'general', 'procurement', 'delivery', 'approval'].map(k => `<label class="f"><span>${({ approval: (esc(S.cfg.approverLabel || 'KEC / authority') + ' approvals (Fri &amp; Sat off)'), delivery: 'Material delivery', closeout: 'Close-out / handover', general: 'General' })[k] || k[0].toUpperCase() + k.slice(1)}</span><select data-p="calRules.${k}" data-t="int">${[5, 6, 7].map(n => `<option ${c.calRules[k] === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`).join('')}
   </div></section>
   <section class="card"><h2>AI assistance <small>optional – never decides pass / fail</small></h2>
     <label class="sw"><input type="checkbox" data-p="ai.on" data-t="bool" ${c.ai.on ? 'checked' : ''}><span>Use Claude for this project</span></label>
