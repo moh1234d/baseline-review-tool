@@ -1,3 +1,7 @@
+## v7.4
+Layout.
+- Claim review and Baseline builder now use the same two-pane layout as Quick review, Schedule comparison, Delay analysis and the P6 roundtrip check: file actions and the first inputs on the left, the rest on the right (stacked on a phone). The Full-review steps (setup, files, confirmations, run, report) keep their single-column layout because they are forms.
+
 ## v7.3
 Background comparison.
 - Schedule comparison of large files (over 3,000 activities) now runs in a background worker, so the page stays responsive. On a 35,000-activity pair the longest freeze fell from about 5 s to under 0.5 s, and the result is identical to the in-page calculation (checked).

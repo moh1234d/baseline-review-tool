@@ -49,3 +49,11 @@ document.addEventListener('click', async e => {
   S.pf.rows.forEach((r, i) => ws.addRow(r.error ? [i + 1, '', r.file, '', '', '', '', '', '', '', '', r.error] : [i + 1, r.project, r.file, r.tasks, r.dataDate, r.finish, r.pct, r.major, r.other, r.negFloat, r.openEnds, r.top]));
   download(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Portfolio_triage_v' + E.VERSION + '.xlsx'); toast('Table created', 'ok');
 });
+
+/* v7.4: shared two-pane layout for long step-by-step screens: inputs on the left, the rest on the right */
+function splitLayout(h, marker) {
+  const hh = h.indexOf('</header>') + 9, i = marker ? h.indexOf(marker) : -1;
+  const head = h.slice(0, hh), left = h.slice(hh, i < 0 ? h.length : i).replace('<div class="actions" style="margin-top:0">', '<div class="actions stack" style="margin:0 0 14px">'), right = i < 0 ? '' : h.slice(i);
+  $('#main').classList.add('wide');
+  $('#main').innerHTML = `<div class="split has-res"><aside class="pane-in">${left}</aside><div class="pane-out">${head}${right}</div></div>`;
+}

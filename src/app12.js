@@ -69,7 +69,7 @@ function viewBuilder() {
     } else h += `<p class="hint">Pick the columns above. Item no. and Amount are required.</p>`;
   }
   h += `</section>`;
-  if (!B.items.length) { $('#main').innerHTML = h; return; }
+  if (!B.items.length) { splitLayout(h, null); return; }
   const sd = B.set, d = B.def, dsum = E.bbSum(d);
   h += `<section class="card"><h2>2. Project settings</h2><div class="grid g4"><label class="f"><span>Project name</span><input id="bs-name" value="${esc(sd.name)}"></label><label class="f"><span>Activity ID prefix</span><input id="bs-prefix" value="${esc(sd.prefix)}"></label><label class="f"><span>Planned start</span><input id="bs-start" type="date" value="${esc(sd.start)}"></label><label class="f"><span>Currency</span><input id="bs-cur" value="${esc(sd.currency)}"></label><label class="f"><span>Progress resource price per unit (carries the budget)</span><input id="bs-price" type="number" step="any" value="${sd.price}"></label><label class="f"><span>WBS layout</span>${SEL('id="bs-wbs"', [['phase', 'Phase → bill (Milestones, Engineering, Procurement, Construction…)'], ['bill', 'Bill → stage']], sd.wbsMode)}</label><label class="f"><span>Group BOQ lines below this value into one activity per bill (0 = off)</span><input id="bs-agg" type="number" min="0" step="any" value="${sd.agg}"></label></div>
   <div class="f" style="margin:10px 0"><span>Working days (calendar written to the XER)</span><div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">${E.BB_WEEK.map(x => `<label><input type="checkbox" data-bday="${x}" ${sd.days.includes(x) ? 'checked' : ''}> ${E.BB_DAYN[x]}</label>`).join('')}<small class="hint">One shift of 8 hours per day (08:00-16:00). ${esc(E.bbCalName(sd.days, sd.hrs))} · ${sd.days.length * sd.hrs} h per week</small></div></div>
@@ -105,7 +105,7 @@ function viewBuilder() {
     <div class="actions"><button class="btn primary" data-bbx="xer" ${bad.length || warn.some(i => !((B.warnWhy || {})[E.hash(i.txt)] || '').trim()) ? 'disabled' : ''}>Download XER for P6</button><button class="btn" data-bbx="xlsx">Download mapping & audit workbook (Excel)</button></div><p class="hint">The XER holds the WBS, activities and milestones, the accepted relationships, both resources and their assignments. Import it as a new project in P6 and schedule (F9); the dates P6 calculates can differ from the preview below. Import into P6 (20.12) succeeded on the 30 Oct 2026 test; budget, calendar and dates still need your check against the preview. Test the import on a copy first.</p></section>`;
   }
   h += bbAiHtml();
-  $('#main').innerHTML = h; window.scrollTo(0, wy);
+  splitLayout(h, '<section class="card"><h2>2. Project settings'); window.scrollTo(0, wy);
 }
 function bbStatus(B, R) {
   const nph = R.acts.filter(a => a.stage === 'C' && a.durSrc === 'placeholder').length, nAcc = R.tmpl.filter(t => t.status === 'accepted').length;

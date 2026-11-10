@@ -68,7 +68,7 @@ function viewClaims() {
   ${T.slip != null ? `<p class="hint">Observed finish movement in the loaded analysis: ${dsg(T.slip)} days. ${T.c > T.slip && T.slip >= 0 ? 'The claimed total is above it. Check overlaps and concurrency before relying on the sum.' : ''}${T.p > T.slip && T.slip >= 0 ? ' The proposed total is above the observed movement.' : ''}</p>` : ''}
   <p class="hint">Days shown are inputs and suggestions for the authorized person. The tool does not calculate entitlement.</p></section>
   <section class="card"><h2>6. Decision log</h2>${C.log.length ? qtbl(['When', 'Who', 'Entry'], C.log.slice().reverse().slice(0, 100).map(l => `<tr><td class="nw">${esc(l.t)}</td><td>${esc(l.who)}</td><td>${esc(l.msg)}</td></tr>`)) : '<p class="none">No entries yet.</p>'}</section>`;
-  $('#main').innerHTML = h;
+  splitLayout(h, '<section class="card"><h2>2. Clause register');
 }
 
 /* ---- events ---- */
