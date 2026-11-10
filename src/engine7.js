@@ -8,13 +8,16 @@ E.DL_CAUSES = { LATE: 'Late start / waiting', DUR: 'Duration growth', LOGIC: 'Lo
   const done = t => t.status === 'TK_Complete';
 
   /* every predecessor of a with the gap (working days) between what the link implies and when a actually starts */
-  E.dlDrivers = function (M, a) {
-    const cal = M.cal[a.clndr]; const span = (a.ef != null && a.es != null) ? a.ef - a.es : 0; const out = [];
+  /* v6.7: lags are counted in working days on the predecessor's calendar; start milestones take no time (successor starts the same day), a finish milestone takes the finish day of its predecessor; o = { ES, EF, links } lets the recovery scenarios use recalculated dates and changed links */
+  const shiftWd = (cal, d, n) => { n = Math.round(n || 0); const st = n >= 0 ? 1 : -1; for (let i = 0; i < Math.abs(n); i++) { d += st; let g = 0; while (cal && !E.isWorking(cal, d) && g++ < 400) d += st; } return d; };
+  E.dlDrivers = function (M, a, o) {
+    o = o || {}; const ES = o.ES || (t => t.es), EF = o.EF || (t => t.ef), cal = M.cal[a.clndr], aes = ES(a), aef = EF(a); const span = (aef != null && aes != null) ? aef - aes : 0; const out = [];
     for (const l of a.pre) {
-      const p = l.from; if (p.es == null || p.ef == null || a.es == null) continue; const lag = Math.round(l.lagCal || 0);
-      let imp; if (l.type === 'FS') imp = p.ef + 1 + lag; else if (l.type === 'SS') imp = p.es + lag; else if (l.type === 'FF') imp = p.ef + lag - span; else imp = p.es + lag - span;
-      if (p.isMile && l.type === 'FS' && p.ef === p.es) imp = p.ef + (p.isFinMile ? 0 : 1);
-      out.push({ link: l, from: p, imp, gap: wdBetween(cal, imp, a.es) });
+      const p = l.from, pes = ES(p), pef = EF(p); if (pes == null || pef == null || aes == null) continue; const pcal = M.cal[p.clndr];
+      for (const c of ((o.links && o.links.get(l)) || [{ type: l.type, lagWd: l.lagWd }])) {
+        let imp; if (c.type === 'FS') { const f = shiftWd(pcal, pef, c.lagWd); imp = (p.isMile && !p.isFinMile) || a.isFinMile ? f : f + 1; } else if (c.type === 'SS') imp = shiftWd(pcal, pes, c.lagWd); else if (c.type === 'FF') imp = shiftWd(pcal, pef, c.lagWd) - span; else imp = shiftWd(pcal, pes, c.lagWd) - span;
+        out.push({ link: l, from: p, imp, gap: wdBetween(cal, imp, aes), type: c.type });
+      }
     }
     return out;
   };

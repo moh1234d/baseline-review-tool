@@ -1,3 +1,11 @@
+## v6.7
+Driving path.
+- One method for the driving path everywhere: a link drives when its gap, counted in working days on the predecessor's calendar, is within the allowed gap. The recovery path in the comparison used calendar days and a fixed tolerance; it now uses the same working-day relationship gap as Delay analysis.
+- Lags are counted in working days on the predecessor's calendar (before: converted with a 7-over-working-days ratio).
+- Milestone rule in the path: start milestones take no time, a finish milestone takes the finish day of its predecessor (same rule as the recalculation).
+- New setting in Delay analysis settings: "A link drives when its gap is at most (working days)", default 5. Level-of-effort and WBS-summary activities are skipped.
+- When the XER carries P6's driving-path flag, the Recovery options section shows how many path activities carry it.
+
 ## v6.6
 - The online site now asks for a password (checked on the server by a Cloudflare Worker, not in the page). The password is a Cloudflare secret named BRT_PASSWORD and can be changed there without touching the code; any user name is accepted. If the secret is missing the site stays closed.
 

@@ -17,4 +17,6 @@ const assert=require('assert');let n=0;const eq=(name,got,want)=>{assert.strictE
 {const a=mk('A',{durWd:10}),b=mk('B',{durWd:10}),l=mk('L',{type:'TT_LOE',durWd:200});link(a,b);eq('level of effort does not hold the finish',fmt(run([a,b,l]).finish),'2026-01-30');}
 {const a=mk('A',{durWd:5,cstrType:'CS_MSOB',cstrDate:D('2026-02-10')});eq('start on or before is not a floor',fmt(run([a]).es.get('A')),'2026-01-05');
  const b=mk('B',{durWd:5,cstrType:'CS_MSOA',cstrDate:D('2026-02-10')});eq('start on or after is a floor',fmt(run([b]).es.get('B')),'2026-02-10');}
+{const a=mk('A',{es:D('2026-01-05'),ef:D('2026-01-09')}),b=mk('B',{es:D('2026-01-14'),ef:D('2026-01-16')});link(a,b,'FS',2);
+ const M={cal:{c:cal},tasks:[a,b]};eq('relationship gap: lag counted in working days',E.dlDrivers(M,b)[0].gap,0);b.es=D('2026-01-16');eq('relationship gap: two days late',E.dlDrivers(M,b)[0].gap,2);}
 console.log(n+' checks passed');

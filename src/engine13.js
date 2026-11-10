@@ -21,7 +21,7 @@ E.audience = function (k) {
   };
   return A[k] || A.contractor;
 };
-E.DELAY_DEFAULTS = { audience: 'contractor', mode: 'base', tolDays: 1, accelCrewPct: 50, overlapPct: 30, splitWd: 20, minRemWd: 5, holdWords: 'approv|submittal|procure|deliver|supply|cure|curing|drying|test|commission|inspect|authority|\\bNOC\\b|handover|shop ?draw', maxPath: 600, topN: 10, reservation: 'This request is made without prejudice to the rights and obligations of either party under the Contract. It is not an instruction to accelerate, and it does not state who is responsible for any delay.' };
+E.DELAY_DEFAULTS = { audience: 'contractor', mode: 'base', tolDays: 1, accelCrewPct: 50, overlapPct: 30, splitWd: 20, minRemWd: 5, holdWords: 'approv|submittal|procure|deliver|supply|cure|curing|drying|test|commission|inspect|authority|\\bNOC\\b|handover|shop ?draw', maxPath: 600, topN: 10, pathGapWd: 5, reservation: 'This request is made without prejudice to the rights and obligations of either party under the Contract. It is not an instruction to accelerate, and it does not state who is responsible for any delay.' };
 E.delayAnalysis = function (R, c) {
   const { A, B, sec, blk, T, num, r1, dd, isCrit, bA, bB, both, rawB } = c, cfg = c.opt.cfg || {};
   const d = Object.assign({}, E.DELAY_DEFAULTS, cfg.delay || {}); let hold; try { hold = new RegExp(d.holdWords, 'i'); } catch (e) { hold = /^$/; }
@@ -40,11 +40,12 @@ E.delayAnalysis = function (R, c) {
   const cols = ['ID', 'Activity', 'WBS', 'Status', base ? 'Baseline finish' : 'Previous finish', 'Current finish', 'Finish slip (d)', 'Start slip (d)', 'Float (cal. d)', 'Indicator (not a finding)'];
   // driving path
   const pathOf = (M, ov, dt) => { const ES = t => dt && dt.es.has(t.id) ? dt.es.get(t.id) : t.es, EF = t => dt && dt.ef.has(t.id) ? dt.ef.get(t.id) : t.ef, cand = M.tasks.filter(t => EF(t) != null && t.type !== 'TT_LOE' && t.type !== 'TT_WBS'); if (!cand.length) return []; let end = cand[0]; for (const t of cand) if (EF(t) > EF(end) || (EF(t) === EF(end) && (t.tfWd != null && end.tfWd != null && t.tfWd < end.tfWd))) end = t;
-    const rev = [], seen = new Set(); let t = end, lin = null;
-    while (t && !seen.has(t.id) && rev.length < d.maxPath) { seen.add(t.id); rev.push({ t, lin }); let best = null, bg = Infinity;
-      for (const l of t.pre) { const p = l.from; if (ES(p) == null || EF(p) == null || ES(t) == null) continue; const wdw = ((M.cal[p.clndr] || {}).wdw) || 6, cs = (ov && ov.get(l)) || [{ type: l.type, lagWd: l.lagWd }];
-        for (const c of cs) { const lc = (c.lagWd || 0) * 7 / wdw, g = c.type === 'FS' ? ES(t) - (EF(p) + lc) : c.type === 'SS' ? ES(t) - (ES(p) + lc) : c.type === 'FF' ? EF(t) - (EF(p) + lc) : EF(t) - (ES(p) + lc); const key = g < -3 ? 1000 + Math.abs(g) : g; if (key < bg) { bg = key; best = { p, l }; } } }
-      if (!best || bg > 7) break; lin = best.l; t = best.p; rev[rev.length - 1].lin = lin; }
+    const rev = [], seen = new Set(); let t = end, lin = null; const skip = x => x.type === 'TT_LOE' || x.type === 'TT_WBS';
+    while (t && !seen.has(t.id) && rev.length < d.maxPath) { seen.add(t.id); rev.push({ t, lin });
+      const ds = E.dlDrivers(M, t, { ES, EF, links: ov }).filter(x => !skip(x.from)); if (!ds.length) break;
+      const mg = Math.min(...ds.map(x => x.gap)); if (mg > (d.pathGapWd == null ? 5 : d.pathGapWd)) break;
+      const w = ds.filter(x => x.gap === mg).sort((p, q) => (q.imp - p.imp) || ((EF(q.from) || 0) - (EF(p.from) || 0)))[0];
+      lin = w.link; t = w.from; rev[rev.length - 1].lin = lin; }
     return rev.reverse(); };
   const pB = pathOf(B), pA = pathOf(A), pBset = new Set(pB.map(x => x.t.code)), pAset = new Set(pA.map(x => x.t.code));
   const pathRows = [], pathObjs = []; let prev = 0, entered = 0;
@@ -99,6 +100,7 @@ E.delayAnalysis = function (R, c) {
       const S7 = { rem: S5.rem, links: S6.links, raw: rawB };
       calc = { base, nCrit: critT.length, nLinks: S6.links.size, sc: [run(S1), run(S2), run(S3), run(S4), run(S5), run(S6), run(S7)] }; } catch (e) { console.error(e); calc = null; }
     const scen = (n, g, need, i) => { const x = calc && calc.sc[i], gain = x ? x.gain : null, pf = gain == null ? null : curFinish - gain; return [n, num(r1(g)), gain == null ? '' : T(num(r1(gain)), gain > 0 ? 'ok' : ''), pf == null ? '' : dd(pf), pf == null ? '' : T(sgn(Math.round(pf - refFinish)), tone(pf - refFinish)), x ? (x.nw.length ? num(x.nw.length, 0) + ' activities now drive the finish' : 'Same path') : '', need]; };
+    { const fl = pB.map(x => (rawB.get(x.t.code) || {}).driving_path_flag), has = fl.some(v => v === 'Y' || v === 'N'); if (has) { const ag = fl.filter(v => v === 'Y').length; R.dly.pathFlag = { agree: ag, total: pB.length }; s.facts.push({ l: 'Driving path vs the P6 driving-path flag', v: T(ag + ' of ' + pB.length + ' path activities carry the flag', ag === pB.length ? 'ok' : '') }); } }
     s.facts.push({ l: 'Driving-path activities not complete', v: T(num(pB.filter(x => !x.t.isMile && x.t.status !== 'TK_Complete').length, 0), '') }, { l: 'With a recovery option', v: T(num(cand.length, 0), cand.length ? 'info' : '') }, { l: 'Held (not accelerated)', v: T(num(held.length, 0), '') });
     if (calc) { const diff = calc.base.finish - curFinish; s.facts.push({ l: 'Recalculation check (finish by the tool vs the XER)', v: T((diff > 0 ? '+' : '') + Math.round(diff) + ' d', Math.abs(diff) > 5 ? 'bad' : 'ok') }); }
     blk(s, 'Recovery options per activity (largest first)', ['ID', 'Activity', 'WBS', 'Remaining (wd)', 'More crews (+' + d.accelCrewPct + '%) saves (cal. d)', 'Overlap / lag removal saves (cal. d)', 'Splitting by zone or floor saves', 'Overlap note', 'Crews could be freed from (same labour resource, has float)'], cand.map(x => [x.t.code, x.t.name, x.t.wbsPath, num(r1(x.rem)), x.crews ? num(r1(x.crews)) : '', x.ov ? num(r1(x.ov)) : '', x.split ? 'up to ' + num(r1(x.split)) : '', x.note, x.free]), { counts: false, num: [3, 4, 5] });
