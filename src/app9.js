@@ -12,9 +12,28 @@ async function loadCmp(side, file) {
     toast(file.name + ': ' + M.tasks.length + ' activities', 'ok'); runCmp();
   } catch (e) { console.error(e); toast(e.message, 'bad'); }
 }
+let cmpWorker = null, cmpToken = 0;
+function cmpOpts() { return { nearCrit: S.cfg.nearCrit, cfg: JSON.parse(JSON.stringify(S.cfg, (k, v) => (k === 'ai' || k === 'docs' || k === 'boq') ? undefined : v)) }; }
+function cmpInline() { try { S.cmp.res = E.compare(S.cmp.A.M, S.cmp.B.M, { nearCrit: S.cfg.nearCrit, cfg: S.cfg }); } catch (e) { console.error(e); toast('Comparison failed: ' + e.message, 'bad'); } }
 function runCmp() {
-  if (S.cmp.A && S.cmp.B) { try { S.cmp.res = E.compare(S.cmp.A.M, S.cmp.B.M, { nearCrit: S.cfg.nearCrit, cfg: S.cfg }); } catch (e) { console.error(e); toast('Comparison failed: ' + e.message, 'bad'); } }
-  if (S.step === 'compare') viewCompare();
+  if (!(S.cmp.A && S.cmp.B)) { if (S.step === 'compare') viewCompare(); return; }
+  const big = Math.max(S.cmp.A.M.tasks.length, S.cmp.B.M.tasks.length) > 3000;
+  if (!big || typeof Worker === 'undefined' || typeof ENGINE_SRC === 'undefined') { cmpInline(); if (S.step === 'compare') viewCompare(); return; }
+  /* v7.3: large schedules are compared in a background worker so the page stays responsive */
+  const tok = ++cmpToken; S.cmp.busy = true; S.cmp.res = null; if (S.step === 'compare') viewCompare(); progress('Comparing the two schedules in the background…', 50);
+  const fin = (res, err) => {
+    if (tok !== cmpToken) return; S.cmp.busy = false; progress(null);
+    if (err) { console.warn('worker compare failed, running in the page:', err); cmpInline(); } else S.cmp.res = res;
+    if (S.step === 'compare') viewCompare();
+  };
+  try {
+    if (cmpWorker) cmpWorker.terminate();
+    const src = ENGINE_SRC + ';self.onmessage=e=>{try{const d=e.data;self.postMessage({res:E.compare(d.A,d.B,d.opt)})}catch(x){self.postMessage({error:String(x&&x.message||x)})}};';
+    const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' })); const w = cmpWorker = new Worker(url); URL.revokeObjectURL(url);
+    w.onmessage = ev => { w.terminate(); if (cmpWorker === w) cmpWorker = null; fin(ev.data.res, ev.data.error); };
+    w.onerror = ev => { w.terminate(); if (cmpWorker === w) cmpWorker = null; fin(null, ev.message || 'worker error'); };
+    w.postMessage({ A: S.cmp.A.M, B: S.cmp.B.M, opt: cmpOpts() });
+  } catch (e) { fin(null, e.message); }
 }
 const cmpSlot = (side, title, hint) => { const f = S.cmp[side]; const dz = drop('c-' + side, '.xer,.txt', false, f ? 'Replace this file' : 'Choose the XER');
   return `<div class="card" style="margin:0"><h2>${title} ${f ? qchip('Loaded', 'ok') : ''}</h2><p class="hint" style="margin-top:0">${hint}</p>

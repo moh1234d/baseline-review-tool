@@ -1,3 +1,9 @@
+## v7.3
+Background comparison.
+- Schedule comparison of large files (over 3,000 activities) now runs in a background worker, so the page stays responsive. On a 35,000-activity pair the longest freeze fell from about 5 s to under 0.5 s, and the result is identical to the in-page calculation (checked).
+- If the browser cannot start the worker, the comparison runs in the page as before.
+- Loading and parsing the XER files still happens in the page. Peak memory is higher while the worker holds a copy of both schedules.
+
 ## v7.2
 Claim review: notice period.
 - The notice test counts from the event start, taken as the date the contractor became aware of the event. Whether awareness equals occurrence is a contractual point, so the new "Count the notice period from" setting lets you use the event end instead, and the finding says which date it used. The decision on validity stays with the authorized person.
