@@ -133,8 +133,10 @@ E.buildModel = function (T) {
   }
   // project start / finish
   const fin = M.tasks.filter(t => t.isMile).map(t => t.ef).filter(x => x != null);
-  M.maxEF = Math.max(...M.tasks.map(t => t.ef).filter(x => x != null));
-  M.minES = Math.min(...M.tasks.map(t => t.es).filter(x => x != null));
+  /* project start and finish come from real activities: level-of-effort and WBS-summary activities span the project and are left out */
+  const real = M.tasks.filter(t => t.type !== 'TT_LOE' && t.type !== 'TT_WBS');
+  M.maxEF = Math.max(...real.map(t => t.ef).filter(x => x != null));
+  M.minES = Math.min(...real.map(t => t.es).filter(x => x != null));
   return M;
 };
 

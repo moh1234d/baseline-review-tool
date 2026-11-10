@@ -1,3 +1,8 @@
+## v6.8
+- Project start and finish now come from real activities only. Level-of-effort and WBS-summary activities span the whole project and no longer stretch the finish date or the duration.
+- Full-review checks L1 (open ends), L7 (zero duration), L8 (float) and L9 (long durations) now look at live work only: not level-of-effort, WBS-summary or completed activities. This removes false findings on updates.
+- Tested with a 35,000-activity pair: load 1.3 s, comparison about 5 s (the page is busy during that time), delay analysis 1.3 s, about 900 MB peak memory in Chrome.
+
 ## v6.7
 Driving path.
 - One method for the driving path everywhere: a link drives when its gap, counted in working days on the predecessor's calendar, is within the allowed gap. The recovery path in the comparison used calendar days and a fixed tolerance; it now uses the same working-day relationship gap as Delay analysis.

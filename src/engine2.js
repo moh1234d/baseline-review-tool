@@ -32,6 +32,8 @@ E.run = function (M, cfg) {
   const r1 = x => Math.round(x * 10) / 10;
   const num = x => (x == null || isNaN(x)) ? '' : Number(x).toLocaleString('en-US', { maximumFractionDigits: 2 });
   const T = M.tasks, nonMile = T.filter(t => !t.isMile);
+  /* v6.8: logic, zero-duration, float and duration checks look at live work only: not level-of-effort, WBS-summary or completed activities */
+  const liveT = T.filter(t => t.type !== 'TT_LOE' && t.type !== 'TT_WBS' && t.status !== 'TK_Complete'), liveNM = liveT.filter(t => !t.isMile);
   const ntp = cfg.ntp ? E.strToDay(cfg.ntp) : null;
   const approvalSet = new Set(cfg.approvalIds || []);
   const finish = cfg.projFinishId ? M.byId[cfg.projFinishId] : (T.filter(t => t.isFinMile).sort((a, b) => (b.ef || 0) - (a.ef || 0) || (/complet|finish/i.test(b.name) ? 1 : 0) - (/complet|finish/i.test(a.name) ? 1 : 0))[0] || T.slice().sort((a, b) => (b.ef || 0) - (a.ef || 0))[0]);
@@ -108,13 +110,13 @@ E.run = function (M, cfg) {
   /* ================= LOGIC ================= */
   { // L1 open ends
     const c = add({ id: 'L1', group: 'Schedule logic', title: 'Open ends (no predecessor / no successor)', rule: 'Every activity must have a predecessor and a successor, except the project start and the project finish. An activity whose only successors are Start-to-Start, or only predecessors are Finish-to-Finish, is also open.' });
-    for (const t of T) {
+    for (const t of liveT) {
       if (!t.pre.length && !startMiles.includes(t)) c.items.push(row(t, 'Missing predecessor'));
       else if (t.pre.length && t.pre.every(l => l.type === 'FF') && !t.isMile) c.items.push(row(t, 'Open start', 'Only FF predecessors'));
       if (!t.succ.length && t !== finish) c.items.push(row(t, 'Missing successor'));
       else if (t.succ.length && t.succ.every(l => l.type === 'SS')) c.items.push(row(t, 'Open finish', 'Only SS successors'));
     }
-    c.count = new Set(c.items.map(i => i.id)).size; c.total = T.length; c.status = c.items.length ? 'fail' : 'pass';
+    c.count = new Set(c.items.map(i => i.id)).size; c.total = liveT.length; c.status = c.items.length ? 'fail' : 'pass';
     c.summary = c.items.length ? c.count + ' activities have an open start or finish.' : 'No open ends.'; c.action = 'Link each listed activity to a real predecessor and successor.';
   }
   { // L2 relationship types
@@ -173,20 +175,20 @@ E.run = function (M, cfg) {
   }
   { // L7 durations 0
     const c = add({ id: 'L7', group: 'Schedule logic', title: 'Zero-duration tasks and milestones with duration', rule: 'Tasks must have a duration above zero; milestones must have zero duration.' });
-    for (const t of T) { if (!t.isMile && (t.durWd === 0)) c.items.push(row(t, 'Zero-duration task', '0 d')); if (t.isMile && t.durWd > 0) c.items.push(row(t, 'Milestone with duration', r1(t.durWd) + ' d')); }
-    c.count = c.items.length; c.total = T.length; c.status = c.count ? 'fail' : 'pass'; c.summary = c.count ? c.count + ' activities.' : 'None.'; c.action = 'Correct the activity type or duration.';
+    for (const t of liveT) { if (!t.isMile && (t.durWd === 0)) c.items.push(row(t, 'Zero-duration task', '0 d')); if (t.isMile && t.durWd > 0) c.items.push(row(t, 'Milestone with duration', r1(t.durWd) + ' d')); }
+    c.count = c.items.length; c.total = liveT.length; c.status = c.count ? 'fail' : 'pass'; c.summary = c.count ? c.count + ' activities.' : 'None.'; c.action = 'Correct the activity type or duration.';
   }
   { // L8 float
     const c = add({ id: 'L8', group: 'Schedule logic', title: 'Excessive or negative float', rule: 'Total float (calendar days) must not exceed ' + cfg.floatLimit + ' days and must not be negative. Float definition in file: ' + (M.so.sched_float_type || 'n/a') + '.' });
-    for (const t of nonMile) if (t.tfCal != null) { if (t.tfCal > cfg.floatLimit) c.items.push(row(t, 'Total float (cal. days)', r1(t.tfCal))); else if (t.tfCal < -1e-6) c.items.push(row(t, 'Negative float (cal. days)', r1(t.tfCal))); }
+    for (const t of liveNM) if (t.tfCal != null) { if (t.tfCal > cfg.floatLimit) c.items.push(row(t, 'Total float (cal. days)', r1(t.tfCal))); else if (t.tfCal < -1e-6) c.items.push(row(t, 'Negative float (cal. days)', r1(t.tfCal))); }
     c.items.sort((a, b) => parseFloat(b.value) - parseFloat(a.value));
-    c.count = c.items.length; c.total = nonMile.length; c.status = c.count ? 'fail' : 'pass'; c.summary = c.count ? c.count + ' activities (' + r1(100 * c.count / nonMile.length) + '%) exceed the float limit or are negative.' : 'Float within limits.'; c.action = 'Tie the activities into logic so that float falls within the limit.';
+    c.count = c.items.length; c.total = liveNM.length; c.status = c.count ? 'fail' : 'pass'; c.summary = c.count ? c.count + ' activities (' + r1(100 * c.count / liveNM.length) + '%) exceed the float limit or are negative.' : 'Float within limits.'; c.action = 'Tie the activities into logic so that float falls within the limit.';
   }
   { // L9 duration
     const c = add({ id: 'L9', group: 'Schedule logic', title: 'Long activity durations', rule: 'Activity duration must not exceed ' + cfg.durLimit + ' calendar days.' });
-    for (const t of nonMile) if (t.durCal > cfg.durLimit) c.items.push(row(t, 'Duration (cal. days)', r1(t.durCal)));
+    for (const t of liveNM) if (t.durCal > cfg.durLimit) c.items.push(row(t, 'Duration (cal. days)', r1(t.durCal)));
     c.items.sort((a, b) => parseFloat(b.value) - parseFloat(a.value));
-    c.count = c.items.length; c.total = nonMile.length; c.status = c.count ? 'fail' : 'pass'; c.summary = c.count ? c.count + ' activities exceed the duration limit.' : 'All durations within limit.'; c.action = 'Break the activities into shorter ones.';
+    c.count = c.items.length; c.total = liveNM.length; c.status = c.count ? 'fail' : 'pass'; c.summary = c.count ? c.count + ' activities exceed the duration limit.' : 'All durations within limit.'; c.action = 'Break the activities into shorter ones.';
   }
 
   /* ---- L10 calendars ---- */
