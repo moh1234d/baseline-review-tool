@@ -1,5 +1,5 @@
 const fs=require('fs');const dir=require('path').join(__dirname,'..','src')+'/';
-const files=['engine1','engine2','engine3','engine4','engine5','engine6','engine7','xerfields','engine8','engine9','engine10','engine11','engine12','engine13','engine14'];
+const files=['engine1','engine2','engine3','engine4','engine5','engine6','engine7','xerfields','engine8','engine9','engine10','engine11','engine12','engine13','engine14','engine15'];
 const code=files.map(f=>fs.readFileSync(dir+f+'.js','utf8')).join('\n')+'\nreturn E;';
 const E=new Function('window','document','localStorage',code)({},{},{});
 // day numbers: 2026-01-05 is Monday. day = epoch days
@@ -19,4 +19,15 @@ const assert=require('assert');let n=0;const eq=(name,got,want)=>{assert.strictE
  const b=mk('B',{durWd:5,cstrType:'CS_MSOA',cstrDate:D('2026-02-10')});eq('start on or after is a floor',fmt(run([b]).es.get('B')),'2026-02-10');}
 {const a=mk('A',{es:D('2026-01-05'),ef:D('2026-01-09')}),b=mk('B',{es:D('2026-01-14'),ef:D('2026-01-16')});link(a,b,'FS',2);
  const M={cal:{c:cal},tasks:[a,b]};eq('relationship gap: lag counted in working days',E.dlDrivers(M,b)[0].gap,0);b.es=D('2026-01-16');eq('relationship gap: two days late',E.dlDrivers(M,b)[0].gap,2);}
+{ // update checks
+ const DD=D('2026-01-12'),mkB=(id,o)=>mk(id,Object.assign({type:'TT_Task'},o));
+ const a1=mkB('X',{ef:D('2026-01-09'),te:D('2026-01-09')}),a2=mkB('Y',{ef:D('2026-01-12'),te:D('2026-01-12')}),a3=mkB('Z',{ef:D('2026-02-20'),te:D('2026-02-20')});
+ const b1=mkB('X',{status:'TK_Complete',ef:D('2026-01-09')}),b2=mkB('Y',{status:'TK_NotStart',ef:D('2026-01-16')}),b3=mkB('Z',{status:'TK_Active',es:D('2026-01-05'),ef:D('2026-02-27'),tfCal:-7}),p=mkB('P',{status:'TK_NotStart',ef:D('2026-01-30')}),w=mkB('W',{status:'TK_Active',ef:D('2026-01-30')}),v=mkB('V',{status:'TK_Complete',as:DD+3,ef:DD+4});
+ link(p,b3);
+ const A={tasks:[a1,a2,a3],dataDate:D('2026-01-05'),cal:{c:cal}},B={tasks:[b1,b2,b3,p,w,v],dataDate:DD,cal:{c:cal}};
+ const raw=new Map([['W',{complete_pct_type:'CP_Phys',phys_complete_pct:'50',target_drtn_hr_cnt:'80',remain_drtn_hr_cnt:'70'}]]);
+ const R={sections:[]},sec=(k,t,d)=>{const x={key:k,facts:[],blocks:[],count:0};R.sections.push(x);return x},blk=(s,t,c,r)=>{s.blocks.push({rows:r})};
+ E.updateChecks(R,{A,B,sec,blk,T:(v,t)=>({v,t}),num:(x)=>String(x),r1:x=>Math.round(x*10)/10,dd:x=>String(x),isCrit:()=>false,both:[[a1,b1],[a2,b2],[a3,b3]],rawB:raw,opt:{cfg:{}}});
+ eq('BEI: one of two planned activities complete',R.upd.bei,0.5);eq('missed activities',R.upd.missed,1);eq('out-of-sequence: started before predecessor finished',R.upd.oos,1);eq('physical percent vs remaining',R.upd.pct,1);eq('actual after the data date',R.upd.fut,1);
+ eq('CPLI below 1 when float is negative',R.upd.cpli<1,true);}
 console.log(n+' checks passed');

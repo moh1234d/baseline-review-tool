@@ -1,3 +1,10 @@
+## v6.9
+Update checks and carry-over of findings.
+- New "Update checks" section in the schedule comparison: baseline execution index (BEI), critical path length index (CPLI), missed activities, out-of-sequence progress, remaining duration against physical percent complete, and actual dates after the data date. These are indicators for the reviewer, not conclusions.
+- Thresholds (BEI, CPLI, percent tolerance in % and working days) are in the Delay analysis settings.
+- Full review: activity-level carry-over of findings between reviews. The report shows what was closed, still open, new and re-opened since the previous review, and an Excel file lists them by activity (sheets New, Reopened, Still open, Closed). The activity lists are kept for the last three reviews only.
+- Tested on unit fixtures and one synthetic pair, not on a real P6 update pair.
+
 ## v6.8
 - Project start and finish now come from real activities only. Level-of-effort and WBS-summary activities span the whole project and no longer stretch the finish date or the duration.
 - Full-review checks L1 (open ends), L7 (zero duration), L8 (float) and L9 (long durations) now look at live work only: not level-of-effort, WBS-summary or completed activities. This removes false findings on updates.

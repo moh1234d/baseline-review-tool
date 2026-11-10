@@ -234,6 +234,7 @@ E.compare = function (A, B, opt) {
     R.keyCounts = { dels: dels.length, delsCrit: nCritDel, rel: rel.length, relCrit: nCritRel, adds: adds.length, actsAdded: newA.length, actsDel: delOpen, dShort: dShort.length, dLong: dLong.length };
     const ix = R.sections.indexOf(s); R.sections.splice(ix, 1); R.sections.splice(1, 0, s); }
   if (E.delayAnalysis) { try { E.delayAnalysis(R, { A, B, sec, blk, T, num, r1, dd, isCrit, bA, bB, both, rawB, opt }); const ks = R.sections.filter(s => ['delay', 'recov', 'request'].includes(s.key)); ks.forEach(s => R.sections.splice(R.sections.indexOf(s), 1)); R.sections.splice(2, 0, ...ks); } catch (e) { console.error(e); R.delayError = e.message; } }
-  R.total = R.sections.filter(s => !['over', 'key', 'delay', 'recov', 'request'].includes(s.key)).reduce((n, s) => n + s.count, 0);
+  if (E.updateChecks) { try { const us = E.updateChecks(R, { A, B, sec, blk, T, num, r1, dd, isCrit, both, rawB, opt }); if (us) { R.sections.splice(R.sections.indexOf(us), 1); const at = R.sections.findIndex(x => x.key === 'request'); R.sections.splice(at >= 0 ? at + 1 : 2, 0, us); } } catch (e) { console.error(e); R.updError = e.message; } }
+  R.total = R.sections.filter(s => !['over', 'key', 'delay', 'recov', 'request', 'upd'].includes(s.key)).reduce((n, s) => n + s.count, 0);
   return R;
 };
