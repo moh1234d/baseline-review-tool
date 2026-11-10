@@ -1,3 +1,7 @@
+## v7.2
+Claim review: notice period.
+- The notice test counts from the event start, taken as the date the contractor became aware of the event. Whether awareness equals occurrence is a contractual point, so the new "Count the notice period from" setting lets you use the event end instead, and the finding says which date it used. The decision on validity stays with the authorized person.
+
 ## v7.1
 Wording per client.
 - Project setup has three new text fields: the name of the contract conditions used in citations, the calendar clause cited in the calendar checks, and the approving party named in the approval checks. The defaults are the previous wording (Particular Conditions, A8.2, KEC / authority), so existing projects read the same. They are saved with the project.
