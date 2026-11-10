@@ -159,7 +159,7 @@ function viewDelay() {
     <section class="card"><h2>2. How the finish moved</h2><p class="hint" style="margin-top:0">Each bar is one activity on the driving path and the days of delay it added. Together they explain the whole movement of the finish.</p><div class="dldia">${dlWaterfall(r, p1)}</div></section>
     <section class="card"><h2>3. Top delay events and optional party notes</h2>${dlEventsTable(rows)}<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:20px;margin-top:16px"><div><h3 class="bt" style="margin-top:0">By cause</h3>${dlBars(sp.byC, DL_CCOL, sp.pos || 1)}</div><div><h3 class="bt" style="margin-top:0">By responsible party <small>from your tags</small></h3>${dlBars(sp.byP, DL_PCOL, sp.pos || 1)}</div></div></section>
     <section class="card"><h2>4. Network diagrams – the driving path and the next critical paths</h2>${r.paths.map(p => dlPathBlock(p, r, 'A', 0)).join('')}</section>
-    <section class="card"><h2>5. Parallel (concurrent) delays</h2>${dlConcurrentHtml(r.concurrent)}</section>
+    <section class="card"><h2>5. Other paths also slipping</h2>${dlConcurrentHtml(r.concurrent)}</section>
     <section class="card"><h2>6. Data checks before you trust the result</h2>${dlIntegrityHtml(r.integrity)}</section>`;
   } else {
     const rows = dlEventsAll(r), sp = dlSplit(rows), T = r.target;

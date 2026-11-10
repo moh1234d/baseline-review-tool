@@ -37,6 +37,7 @@ function viewSetup() {
     <label class="f"><span>Contract duration</span><span class="inl"><input data-p="durationValue" data-t="num" type="number" step="any" value="${esc(c.durationValue || '')}"><select data-p="durationUnit" data-t="str"><option value="months" ${c.durationUnit === 'months' ? 'selected' : ''}>months</option><option value="days" ${c.durationUnit === 'days' ? 'selected' : ''}>days</option></select></span></label>
     ${fld('Notice to proceed / commencement date', 'ntp', 'date')}
     ${fld('Contract review period for submittals (days)', 'reviewDays', 'num')}
+    ${fld('Contract clause on float ownership (optional, quoted in check T2)', 'floatClause', 'text', 'placeholder="leave empty if the contract has none"')}
     ${sel('Project type', 'projectType', [['infrastructure', 'Infrastructure (labour + equipment required)'], ['buildings', 'Buildings (labour only)']])}
     ${sel('File being reviewed', 'fileType', [['baseline', 'Baseline submission'], ['update', 'Progress update']])}
   </div></section>

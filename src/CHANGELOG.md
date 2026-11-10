@@ -1,3 +1,11 @@
+## v6.2
+Wording that goes to contractors, from the independent review.
+- Recovery request: the tool's options are now worded as options for the contractor to propose against, not instructions ("Propose how to finish ... sooner (for example about 50% more crews)").
+- New editable reservation line in Delay analysis settings (without prejudice, not an instruction to accelerate, no statement of responsibility). It is added to the draft wording in the comparison and in the Word report.
+- "Likely cause" is now "Indicator (not a finding)"; "these are delaying the project" is now "a delay on these is likely to move the finish"; "Parallel (concurrent) delays" is now "Other paths also slipping".
+- The statement "float belongs to the Employer - GC 17.3" was hard-coded in check T2. It is now a setting (Project setup, "Contract clause on float ownership"), empty by default.
+- The critical-activities tile is no longer coloured green or red (the count can fall because work completed).
+
 ## v6.1
 Fixes from the independent review of v6.0.
 - Phone: the menu button was hidden by a later style rule, so no other screen could be reached. Fixed.

@@ -2,7 +2,7 @@
 const GROUP_ORDER = ['Contract & time', 'Scope & BOQ', 'Cost & resources', 'Calendars', 'Consistency', 'Schedule logic', 'Submitted documents'];
 const WHY = {
   T1: 'The commencement date fixes every contractual date that follows; a programme that starts on another date cannot be measured against the contract.',
-  T2: 'The Contract allows a fixed time for completion. Float belongs to the Employer, so the baseline must finish on the contract completion date.',
+  T2: 'The Contract allows a fixed time for completion, so the baseline should finish on the contract completion date.',
   T3: 'Contractual milestones are binding dates; the baseline must show them exactly.',
   T4: 'Review periods are set by the Contract and drive the time allowed for approvals in the programme.',
   L1: 'Open ends let activities float freely, so delay to them does not move the project finish and the critical path is understated.',

@@ -66,7 +66,7 @@ E.run = function (M, cfg) {
   }
   let completion = null;
   { // C2 completion
-    const c = add({ id: 'T2', group: 'Contract & time', title: 'Project finish matches the contract duration', rule: 'Scheduled project finish must equal NTP plus the contract duration (float belongs to the Employer – GC 17.3).', source: 'Contract Agreement – time for completion' });
+    const c = add({ id: 'T2', group: 'Contract & time', title: 'Project finish matches the contract duration', rule: 'Scheduled project finish must equal NTP plus the contract duration' + (cfg.floatClause ? ' (' + cfg.floatClause + ')' : '') + '.', source: 'Contract Agreement – time for completion' });
     if (!ntp || !cfg.durationValue) { c.status = 'notrun'; c.summary = 'Contract duration or NTP not entered.'; }
     else {
       completion = cfg.durationUnit === 'months' ? E.addMonths(ntp, +cfg.durationValue) - 1 : ntp + (+cfg.durationValue) - 1;
