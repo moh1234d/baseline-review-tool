@@ -1,3 +1,8 @@
+## v7.5
+Order of the trades.
+- The trade timeline bars were drawn over the table header and looked full for any trade that runs the whole project. They are replaced by two views you can switch between, saved with the project: a month strip (each cell shaded by how many of the trade's activities are in progress) and trade cards (a small activity curve per trade, easy on a phone). Dates stay on one line.
+- Table headers now always stay above the rows in every table.
+
 ## v7.4
 Layout.
 - Claim review and Baseline builder now use the same two-pane layout as Quick review, Schedule comparison, Delay analysis and the P6 roundtrip check: file actions and the first inputs on the left, the rest on the right (stacked on a phone). The Full-review steps (setup, files, confirmations, run, report) keep their single-column layout because they are forms.
