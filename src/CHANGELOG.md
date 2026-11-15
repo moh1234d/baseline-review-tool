@@ -1,3 +1,9 @@
+## v7.8
+Detection on multi-contractor projects (from the same real-project comparison).
+- "Stage 1" to "Stage 4" under "Typical Floors" are floor groups, not packages. WBS words are no longer read as packages when they sit under a node with floor, typical, podium, basement or level in its name. The list is a setting ("Do not read WBS words as packages when they sit under").
+- Trade is suggested from a code type named Major Activities, Trade, Work package or Discipline, and zone from a code type named Zone or Rooms/Areas. Both stay "Automatic" in the detection table, so you can change or switch them off. On the test project this turns 26 keyword trades into 85 real ones and removes 4,000 "Other".
+- Contractor names can be merged in a setting (one line per merge, old name = name to show) for spellings such as Kaaki / KAKI.
+
 ## v7.7
 Fixes from a comparison against an independent analysis of a real 32,393-activity project (multi-vendor hotel fit-out).
 - Buildings: "B1" and "B2" in activity names were read as Building 1 and Building 2 (they are basements). Now only explicit words (Building, Block, Tower, Plot, Villa) count. A new setting, "B1, B2 in activity names mean", brings the old behaviour back for projects that really use B1/B2 as buildings.

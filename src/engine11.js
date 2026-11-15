@@ -64,7 +64,7 @@ E.structCodeCandidates = function (M, minVals) {
 E.structSuggestCodes = function (M) {
   const C = E.structCodeCandidates(M), pick = (rxs) => { for (const rx of rxs) { const c = C.filter(o => rx.test(o.name)).sort((a, b) => b.n - a.n)[0]; if (c) return c.name; } return null; };
   const unit = C.filter(o => /^(villa type|package|cluster)/i.test(o.name)).map(o => o.name);
-  return { building: pick([/plot|building|bldg|block|tower|villa/i]), unit: unit.length ? unit : null, zone: pick([/zone/i]), floor: pick([/floor/i, /level/i]), trade: null, contractor: pick([/sub-?contractor/i, /contractor/i, /vendor|supplier/i]) };
+  return { building: pick([/plot|building|bldg|block|tower|villa/i]), unit: unit.length ? unit : null, zone: pick([/zone/i, /rooms?\s*\/\s*areas?|^[^-]*-\s*rooms?$/i]), floor: pick([/floor/i, /level/i]), trade: pick([/major activit/i, /^[^-]*-?\s*trades?$/i, /work package|discipline/i]), contractor: pick([/sub-?contractor/i, /contractor/i, /vendor|supplier/i]) };
 };
 E.STRUCT_STAGES = [['mobilization', 'mobili[sz]'], ['engineering', 'engineering|shop ?draw|drawings?\\b'], ['procurement', 'procurement|purchas|procure'], ['closeout', 'close ?out|handing ?over|hand ?over|commissioning'], ['construction', 'construction']];
 E.structStage = function (t, segs, rules) {
@@ -73,10 +73,10 @@ E.structStage = function (t, segs, rules) {
   return found || t.cat || 'general';
 };
 E.structure = function (M, cfg) {
-  const sc = Object.assign({ bareBuilding: false, codeMap: null, tradeRules: null, stageRules: null, floorStrict: true, zoneSystem: null, unitWords: 'area|stage|phase|package|cluster|village' }, cfg.structure || {});
+  const sc = Object.assign({ bareBuilding: false, codeMap: null, tradeRules: null, stageRules: null, floorStrict: true, zoneSystem: null, unitWords: 'area|stage|phase|package|cluster|village', unitSkipParents: 'floor|typical|podium|basement|level', contractorAliases: '' }, cfg.structure || {});
   const codeMap = Object.assign({}, E.structSuggestCodes(M), sc.codeMap || {}), rules = (sc.tradeRules || E.STRUCT_TRADES).map(r => [r[0], new RegExp(r[1], 'i')]);
   const R = Object.assign({}, E.STRUCT_RX), T = M.tasks.filter(t => !t.isMile), rows = [], day = t => t.ts != null ? t.ts : t.es, dayE = t => t.te != null ? t.te : t.ef;
-  const bnRx = sc.bareBuilding ? R.bldgName : /\b(?:(plot|building|bldg|block|tower|villa)\s*-?\s*0?(\d+[A-Z]?))\b/i, unitRx = new RegExp('^(' + sc.unitWords + ')\\s*[-(]*\\s*0?(\\d+[A-Z]?)\\)?', 'i'), srcCount = { building: {}, unit: {}, zone: {}, floor: {}, trade: {}, contractor: {} }, inc = (d, s) => { srcCount[d][s] = (srcCount[d][s] || 0) + 1; };
+  const skipRx = sc.unitSkipParents ? new RegExp(sc.unitSkipParents, 'i') : null, aliasMap = new Map(String(sc.contractorAliases || '').split(/[\n;]+/).map(l => l.split('=').map(x => x.trim())).filter(a => a.length === 2 && a[0] && a[1]).map(a => [a[0].toLowerCase(), a[1]])), bnRx = sc.bareBuilding ? R.bldgName : /\b(?:(plot|building|bldg|block|tower|villa)\s*-?\s*0?(\d+[A-Z]?))\b/i, unitRx = new RegExp('^(' + sc.unitWords + ')\\s*[-(]*\\s*0?(\\d+[A-Z]?)\\)?', 'i'), srcCount = { building: {}, unit: {}, zone: {}, floor: {}, trade: {}, contractor: {} }, inc = (d, s) => { srcCount[d][s] = (srcCount[d][s] || 0) + 1; };
   const fromCode = (t, d) => { const nms = [].concat(codeMap[d] || []); const nm = nms.find(n => t.codes[n]); if (!nm) return null; const c = t.codes[nm]; return c.name && c.name !== c.short && d !== 'floor' && d !== 'zone' ? c.name : c.short; };
   for (const t of T) {
     const segs = (M.wbs[t.wbs] && M.wbs[t.wbs].path) || [], o = { t, stage: E.structStage(t, segs, sc.stageRules), b: null, u: null, z: null, f: null, tr: null, s: {} };
@@ -87,7 +87,7 @@ E.structure = function (M, cfg) {
     o.b = v || null; o.s.b = s; inc('building', s || 'none');
     // package / area / stage
     v = fromCode(t, 'unit'); s = v ? 'code' : null; if (v) v = String(v).trim();
-    if (!v) { const parts = []; for (const sg of segs) { const m = String(sg).trim().match(unitRx); if (m) parts.push(m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase() + ' ' + m[2].toUpperCase()); } if (parts.length) { v = parts.join(' \u00b7 '); s = 'wbs'; } }
+    if (!v) { const parts = []; for (let si = 0; si < segs.length; si++) { const sg = segs[si]; if (skipRx && si > 0 && skipRx.test(String(segs[si - 1]))) continue; const m = String(sg).trim().match(unitRx); if (m) parts.push(m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase() + ' ' + m[2].toUpperCase()); } if (parts.length) { v = parts.join(' \u00b7 '); s = 'wbs'; } }
     o.u = v || null; o.s.u = s; inc('unit', s || 'none'); o.loc = [o.u, o.b].filter(Boolean).join(' \u00b7 ') || null;
     // zone
     v = fromCode(t, 'zone'); s = v ? 'code' : null; if (v) v = 'Zone ' + String(v).replace(/^zone\s*/i, '').replace(/^0+(?=\d)/, '');
@@ -100,7 +100,7 @@ E.structure = function (M, cfg) {
     if (!fl) { const m = t.name.match(R.floorName); if (m) { fl = E.normFloor(m[1] || m[2] || m[3] || m[4], true); if (fl) s = 'name'; } }
     o.f = fl; o.s.f = s; inc('floor', s || 'none');
     // contractor / vendor
-    v = fromCode(t, 'contractor'); o.c = v ? String(v).replace(/\s+/g, ' ').replace(/\(\s+/g, '(').replace(/\s+\)/g, ')').trim() : null; inc('contractor', o.c ? 'code' : 'none');
+    v = fromCode(t, 'contractor'); o.c = v ? String(v).replace(/\s+/g, ' ').replace(/\(\s+/g, '(').replace(/\s+\)/g, ')').trim() : null; if (o.c) { const al = aliasMap.get(o.c.toLowerCase()) || aliasMap.get(o.c.replace(/\s*\(.*$/, '').toLowerCase()); if (al) o.c = al; } inc('contractor', o.c ? 'code' : 'none');
     // trade
     v = fromCode(t, 'trade'); s = v ? 'code' : null;
     if (!v) { const txt = t.name + ' | ' + segs.slice(-2).join(' | '); for (const [n, rx] of rules) if (rx.test(t.name)) { v = n; s = 'keywords'; break; } if (!v) for (const [n, rx] of rules) if (rx.test(txt)) { v = n; s = 'keywords'; break; } }

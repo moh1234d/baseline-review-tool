@@ -55,6 +55,8 @@ function qSeq() {
   const stg = (S.cfg.structure && S.cfg.structure.stageRules) || E.STRUCT_STAGES, cs = S.cfg.structure || {};
   const settings = `<section class="card"><h2>Detection settings <small>saved with the project</small></h2><div class="actions" style="align-items:flex-end;flex-wrap:wrap;gap:14px">
   <label class="f"><span>Floor values from codes</span><select data-qsc="floorStrict"><option value="1" ${cs.floorStrict !== false ? 'selected' : ''}>Keep only real floor names (level 14, L49, Basement 1, G.F, 1st …)</option><option value="0" ${cs.floorStrict === false ? 'selected' : ''}>Keep every code value as a floor</option></select></label>
+  <label class="f"><span>Do not read WBS words as packages when they sit under</span><input data-qsc="unitSkipParents" value="${esc(cs.unitSkipParents == null ? 'floor|typical|podium|basement|level' : cs.unitSkipParents)}" style="min-width:220px"></label>
+  <label class="f"><span>Contractor names to merge (one per line: old name = name to show)</span><textarea data-qsc="contractorAliases" rows="3" style="min-width:260px" placeholder="KAKI = KAAKI&#10;IMAR = FOSHAN">${esc(cs.contractorAliases || '')}</textarea></label>
   <label class="f"><span>B1, B2 in activity names mean</span><select data-qsc="bareBuilding"><option value="0" ${!cs.bareBuilding ? 'selected' : ''}>Basements (not buildings)</option><option value="1" ${cs.bareBuilding ? 'selected' : ''}>Buildings B1, B2</option></select></label>
   <label class="f"><span>Zone code means</span><select data-qsc="zoneSystem"><option value="" ${cs.zoneSystem == null ? 'selected' : ''}>Automatic (${st.zoneSuggestSystem ? 'looks like a system or trade zone' : 'looks like a physical location'})</option><option value="0" ${cs.zoneSystem === false ? 'selected' : ''}>Physical location</option><option value="1" ${cs.zoneSystem === true ? 'selected' : ''}>System or trade (not used for location logic)</option></select></label>
   <label class="f"><span>WBS words for package / area / stage</span><input data-qsc="unitWords" value="${esc(cs.unitWords || 'area|stage|phase|package|cluster|village')}" style="min-width:260px"></label></div>
@@ -72,7 +74,7 @@ function qSeq() {
 }
 document.addEventListener('change', e => {
   const el = e.target; if (!el.dataset) return;
-  if (el.dataset.qsc !== undefined) { const k = el.dataset.qsc; S.cfg.structure = S.cfg.structure || {}; let v = el.value; if (k === 'floorStrict' || k === 'bareBuilding') v = v === '1'; else if (k === 'zoneSystem') v = v === '' ? null : v === '1'; else if (k === 'unitWords') { try { new RegExp(v); } catch (err) { toast('Not a valid word list', 'bad'); return; } v = v.trim() || null; } S.cfg.structure[k] = v; S.qk.st = null; autosave(); qRenderTab(); return; }
+  if (el.dataset.qsc !== undefined) { const k = el.dataset.qsc; S.cfg.structure = S.cfg.structure || {}; let v = el.value; if (k === 'floorStrict' || k === 'bareBuilding') v = v === '1'; else if (k === 'zoneSystem') v = v === '' ? null : v === '1'; else if (k === 'unitWords' || k === 'unitSkipParents') { try { new RegExp(v); } catch (err) { toast('Not a valid word list', 'bad'); return; } v = v.trim() || (k === 'unitSkipParents' ? '' : null); } S.cfg.structure[k] = v; S.qk.st = null; autosave(); qRenderTab(); return; }
   if (el.dataset.qst === undefined) return;
   const d = el.dataset.qst; S.cfg.structure = S.cfg.structure || {}; const o = Object.assign({}, S.cfg.structure.codeMap || {});
   const vals = el.multiple ? [...el.selectedOptions].map(x => x.value) : [el.value];
