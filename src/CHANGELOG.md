@@ -1,3 +1,9 @@
+## v7.7
+Fixes from a comparison against an independent analysis of a real 32,393-activity project (multi-vendor hotel fit-out).
+- Buildings: "B1" and "B2" in activity names were read as Building 1 and Building 2 (they are basements). Now only explicit words (Building, Block, Tower, Plot, Villa) count. A new setting, "B1, B2 in activity names mean", brings the old behaviour back for projects that really use B1/B2 as buildings.
+- Contractor / vendor is now a detected dimension. The tool finds a code type named Contractor, Sub-contractor, Vendor or Supplier, lists its values in the detection table (you can pick another code type), and the floor-direction table groups by building, else by contractor, else by package. The table column is renamed and each row says what it groups by.
+- Door leaves and joinery: engineering, procurement and delivery activities (submittals, approvals, deliveries) are no longer counted as installation in the sequence rules, and fire cabinets / extinguishers are not joinery.
+
 ## v7.6
 Order of the trades on long projects.
 - The month strip showed one cell per month, so a project of two years or more had overlapping labels. It now uses at most 12 cells: months up to a year, then 2-month cells, quarters (Q1 to Q4), half-years, or years, aligned to the calendar. The year appears under the first cell of each year. Hover a cell for its exact period. The cards view uses the same periods.

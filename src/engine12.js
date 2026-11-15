@@ -14,7 +14,7 @@ E.SEQ_STEPS = [
   ['secondfix', 'MEP second fix', 'second fix|2nd fix|cable pull|wire pull|wiring|cabling|cable installation'],
   ['firstfix', 'MEP first fix', 'first fix|1st fix|rough[- ]?in|conduit|embedded|sleeve|pipework|piping|duct(?:ing| ?work)|cable tray|containment'],
   ['doorframe', 'Door frames', 'door ?frame|frames? install'],
-  ['doorjoin', 'Door leaves and joinery', 'door (?:leaf|leaves|shutter|install)|doors? (?:install|fix|fit)|ironmongery|architrave|joinery|wardrobe|cabinet|vanity|kitchen unit|furniture|\\bdoors?\\b'],
+  ['doorjoin', 'Door leaves and joinery', '^(?!.*(?:fire (?:hose )?cabinet|extinguisher))(?=.*(?:door (?:leaf|leaves|shutter|install)|doors? (?:install|fix|fit)|ironmongery|architrave|joinery|wardrobe|cabinet|vanity|kitchen unit|furniture|\\bdoors?\\b))'],
   ['skirtT', 'Tile / stone skirting', '(?:tile|marble|granite|stone|ceramic|porcelain) skirting|skirting.*(?:tile|marble|granite|stone)'],
   ['skirtW', 'Timber / MDF skirting', 'skirting'],
   ['roofwp', 'Roof waterproofing', 'roof.*waterproof|waterproof.*roof'],
@@ -81,7 +81,7 @@ E.seqRules = (cfg) => (cfg.structure && cfg.structure.seq && cfg.structure.seq.r
 E.seqCheck = function (st, cfg) {
   const sc = Object.assign({}, E.SEQ_DEFAULTS, (cfg.structure && cfg.structure.seq) || {}), steps = E.seqSteps(cfg), rules = E.seqRules(cfg), M = st.M, rows = st.rows;
   const lastSeg = o => { const w = M.wbs[o.t.wbs]; return w && w.path ? w.path[w.path.length - 1] || '' : ''; };
-  const stepCount = {}; for (const o of rows) { let k = null; for (const [key, , rx] of steps) if (rx.test(o.t.name)) { k = key; break; } if (!k) { const sg = lastSeg(o); for (const [key, , rx] of steps) if (rx.test(sg)) { k = key; break; } } if (k === 'paint') k = sc.paintGeneric === 'first' ? 'paintFirst' : 'paintFinal'; o.step = k; if (k) stepCount[k] = (stepCount[k] || 0) + 1; }
+  const stepCount = {}; for (const o of rows) { let k = null; for (const [key, , rx] of steps) if (rx.test(o.t.name)) { k = key; break; } if (!k) { const sg = lastSeg(o); for (const [key, , rx] of steps) if (rx.test(sg)) { k = key; break; } } if (k === 'paint') k = sc.paintGeneric === 'first' ? 'paintFirst' : 'paintFinal'; if (o.stage === 'engineering' || o.stage === 'procurement' || o.stage === 'delivery' || o.stage === 'mobilization') k = null; o.step = k; if (k) stepCount[k] = (stepCount[k] || 0) + 1; }
   const WORKEXC = new Set(['tc', 'integ', 'handover', 'inspect', 'tab', 'ptest', 'lifttest', 'clean']);
   const mem = (o, spec) => spec.startsWith('stage:') ? o.stage === spec.slice(6) : spec.startsWith('tr:') ? o.tr === spec.slice(3) : spec === 'work' ? (o.stage === 'construction' && !WORKEXC.has(o.step)) : o.step === spec;
   const byId = new Map(rows.map(o => [o.t.id, o])), calPerWd = 7 / 6, thrDays = sc.thresholdWd * calPerWd;
@@ -117,8 +117,8 @@ E.seqCheck = function (st, cfg) {
   }
   // E1 floor direction per trade step
   const dirSteps = ['struct', 'block', 'firstfix', 'plaster', 'ceil', 'floortile', 'paintFinal', 'doorjoin'], lbl = Object.fromEntries(steps.map(s => [s[0], s[1]]));
-  for (const sk of dirSteps) { const bl = new Map(); for (const o of rows) { if (o.step !== sk || !o.f || o.f.ord > 97 || o.a == null) continue; const k = o.b || o.u || '(project)'; let m = bl.get(k); if (!m) bl.set(k, m = new Map()); const c = m.get(o.f.ord); if (c == null || o.a < c.a) m.set(o.f.ord, { a: o.a, f: o.f.label }); }
-    for (const [k, m] of bl) { const fl = [...m.entries()].sort((a, b) => a[0] - b[0]).map(x => x[1]); if (fl.length < 4) continue; let c = 0, d = 0; for (let i = 0; i < fl.length; i++) for (let j = i + 1; j < fl.length; j++) { if (fl[j].a > fl[i].a) c++; else if (fl[j].a < fl[i].a) d++; } const tau = (c - d) / Math.max(1, c + d); out.e1.push({ step: lbl[sk], k, floors: fl.length, tau, dir: tau > 0 ? 'upward' : 'downward', warn: Math.abs(tau) < sc.dirTau, order: [...fl].sort((a, b) => a.a - b.a).slice(0, 14).map(x => x.f).join(' → ') }); } }
+  const kinds = new Map(); for (const sk of dirSteps) { const bl = new Map(); for (const o of rows) { if (o.step !== sk || !o.f || o.f.ord > 97 || o.a == null) continue; const k = o.b || o.c || o.u || '(project)'; if (!kinds.has(k)) kinds.set(k, o.b ? 'Building' : o.c ? 'Contractor' : o.u ? 'Package / stage' : 'Project'); let m = bl.get(k); if (!m) bl.set(k, m = new Map()); const c = m.get(o.f.ord); if (c == null || o.a < c.a) m.set(o.f.ord, { a: o.a, f: o.f.label }); }
+    for (const [k, m] of bl) { const fl = [...m.entries()].sort((a, b) => a[0] - b[0]).map(x => x[1]); if (fl.length < 4) continue; let c = 0, d = 0; for (let i = 0; i < fl.length; i++) for (let j = i + 1; j < fl.length; j++) { if (fl[j].a > fl[i].a) c++; else if (fl[j].a < fl[i].a) d++; } const tau = (c - d) / Math.max(1, c + d); out.e1.push({ step: lbl[sk], k, kind: kinds.get(k), floors: fl.length, tau, dir: tau > 0 ? 'upward' : 'downward', warn: Math.abs(tau) < sc.dirTau, order: [...fl].sort((a, b) => a.a - b.a).slice(0, 14).map(x => x.f).join(' → ') }); } }
   // E4 same trade in several plots, overlapping, no link between them
   const pairLink = new Set(); for (const l of M.links) { const a = byId.get(l.from.id), b = byId.get(l.to.id); if (!a || !b || !a.step || a.step !== b.step) continue; const ka = a.b || a.u, kb = b.b || b.u; if (ka && kb && ka !== kb) pairLink.add(a.step + '|' + ka + '|' + kb); }
   for (const sk of ['struct', 'block', 'firstfix', 'plaster', 'ceil', 'floortile', 'paintFinal']) { const bl = new Map(); for (const o of rows) { if (o.step !== sk) continue; const k = o.b || o.u; if (!k) continue; let m = bl.get(k); if (!m) bl.set(k, m = []); m.push(o); } if (bl.size < 2) continue; const ks = [...bl.keys()], sp = ks.map(k => span(bl.get(k))), par = [];
