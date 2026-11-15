@@ -69,7 +69,7 @@ E.buildModel = function (T) {
   M.cal = {};
   for (const c of T.CALENDAR.r) {
     const o = E.parseCalendar(c.clndr_data);
-    o.id = c.clndr_id; o.name = c.clndr_name; o.dayHr = parseFloat(c.day_hr_cnt) || 8; o.type = c.clndr_type;
+    o.id = c.clndr_id; o.name = c.clndr_name; o.dayHr = parseFloat(c.day_hr_cnt) || 8; o.type = c.clndr_type; o.weekHr = parseFloat(c.week_hr_cnt); if (isNaN(o.weekHr)) o.weekHr = null; o.wdwHr = o.dayHr * o.wdw;
     M.cal[c.clndr_id] = o;
   }
   // WBS
@@ -107,7 +107,7 @@ E.buildModel = function (T) {
       isMile: t.task_type === 'TT_Mile' || t.task_type === 'TT_FinMile', isFinMile: t.task_type === 'TT_FinMile',
       durWd: wdDur, durCal: wdDur == null ? null : wdDur * k, tfWd: wdTF, tfCal: wdTF == null ? null : wdTF * k,
       es: E.pd(t.act_start_date) != null ? E.pd(t.act_start_date) : E.pd(t.early_start_date), ef: E.pd(t.act_end_date) != null ? E.pd(t.act_end_date) : E.pd(t.early_end_date), ts: E.pd(t.target_start_date), te: E.pd(t.target_end_date),
-      as: E.pd(t.act_start_date), af: E.pd(t.act_end_date), cstrType: t.cstr_type, cstrDate: E.pd(t.cstr_date), cstrType2: t.cstr_type2, cstrDate2: E.pd(t.cstr_date2),
+      as: E.pd(t.act_start_date), af: E.pd(t.act_end_date), cstrType: t.cstr_type, cstrDate: E.pd(t.cstr_date), ee: E.pd(t.expect_end_date), cstrType2: t.cstr_type2, cstrDate2: E.pd(t.cstr_date2),
       status: t.status_code, codes: tcode[t.task_id] || {}, pre: [], succ: [], asg: [], cat: null
     };
     o.wbsPath = M.wbs[o.wbs] ? M.wbs[o.wbs].pathStr : '';

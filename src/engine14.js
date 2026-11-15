@@ -10,6 +10,7 @@ E.recalc = function (M, o) {
   const indeg = new Map(), ids = new Set(inc.map(t => t.id)); for (const t of inc) indeg.set(t.id, 0); for (const t of inc) for (const l of t.pre) if (ids.has(l.from.id)) indeg.set(t.id, indeg.get(t.id) + 1);
   const q = inc.filter(t => !indeg.get(t.id)), order = []; while (q.length) { const t = q.pop(); order.push(t); for (const l of t.succ) { if (!ids.has(l.to.id)) continue; const k = indeg.get(l.to.id) - 1; indeg.set(l.to.id, k); if (!k) q.push(l.to); } }
   const retained = !(M.so && (M.so.sched_retained_logic || M.so.retained_logic) === 'N');
+  const eeMode = (o.expectFinish || 'auto'), useEE = eeMode === 'on' || (eeMode === 'auto' && !!(M.so && M.so.sched_use_expect_end_flag === 'Y'));
   for (const t of order) { const cal = calOf(t), rem = remOf(t), mile = t.isMile, act = t.status === 'TK_Active'; let s = work(cal, dd != null ? dd : (t.es || 0));
     if (/^CS_(MSO|MSOA|MANDSTART)$/i.test(t.cstrType || '') && t.cstrDate != null) s = Math.max(s, work(cal, t.cstrDate));
     /* in-progress work keeps its actual start; with retained logic its remaining work still waits for its predecessors */
@@ -18,6 +19,8 @@ E.recalc = function (M, o) {
         if (c.type === 'FS') { const f = shift(pcal, pe, c.lagWd); /* a start milestone has no duration: its successor starts the same day; a finish milestone takes the finish day of its predecessor */ s = Math.max(s, work(cal, p.isMile && !p.isFinMile || t.isFinMile ? f : f + 1)); }
         else if (c.type === 'SS') { if (!act) s = Math.max(s, work(cal, shift(pcal, ps, c.lagWd))); }
         else { const F = shift(pcal, c.type === 'FF' ? pe : ps, c.lagWd); s = Math.max(s, rem > 0 ? subW(cal, F, rem) : F); } } }
-    es.set(t.id, act && t.es != null ? t.es : s); ef.set(t.id, mile || rem <= 0 ? s : addWd(cal, s, rem)); }
+    es.set(t.id, act && t.es != null ? t.es : s); let fe = mile || rem <= 0 ? s : addWd(cal, s, rem);
+    /* v7.9: Expected Finish (P6 option 'use expected finish dates') replaces the finish computed from remaining duration */
+    if (useEE && t.ee != null && !mile) fe = Math.max(s, t.ee); ef.set(t.id, fe); }
   let fin = -Infinity; for (const v of ef.values()) if (v != null && v > fin) fin = v; return { es, ef, finish: fin, unscheduled: inc.length - order.length };
 };

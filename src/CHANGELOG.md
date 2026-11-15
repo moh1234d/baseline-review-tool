@@ -1,3 +1,10 @@
+## v7.9 (2026-11-15)
+Added after checking an outside AI review against the real 32k-activity XER. Several of its claims were already handled (progress override in the recalculation, top-down stage detection) or did not apply (no expected-finish dates in the file); the rest was added.
+- New check L10d, Calendar working hours: flags calendars whose day is not the standard length, whose weekly hours exceed a limit, or whose stored weekly hours differ from the days actually worked. Two new settings in Setup: standard working day (default 8 h) and maximum weekly hours (default 60).
+- New check L10e, Schedule calculation settings: reports progress override, open-ended activities not critical, expected finish in use, critical = total float, and a baseline project that is not in the file.
+- Recalculation: Expected Finish dates are applied when the file's option is on (setting expectFinish: auto/on/off, default auto).
+- Tests: 3 new checks (20 in total).
+
 ## v7.8
 Detection on multi-contractor projects (from the same real-project comparison).
 - "Stage 1" to "Stage 4" under "Typical Floors" are floor groups, not packages. WBS words are no longer read as packages when they sit under a node with floor, typical, podium, basement or level in its name. The list is a setting ("Do not read WBS words as packages when they sit under").

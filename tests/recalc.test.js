@@ -30,4 +30,11 @@ const assert=require('assert');let n=0;const eq=(name,got,want)=>{assert.strictE
  E.updateChecks(R,{A,B,sec,blk,T:(v,t)=>({v,t}),num:(x)=>String(x),r1:x=>Math.round(x*10)/10,dd:x=>String(x),isCrit:()=>false,both:[[a1,b1],[a2,b2],[a3,b3]],rawB:raw,opt:{cfg:{}}});
  eq('BEI: one of two planned activities complete',R.upd.bei,0.5);eq('missed activities',R.upd.missed,1);eq('out-of-sequence: started before predecessor finished',R.upd.oos,1);eq('physical percent vs remaining',R.upd.pct,1);eq('actual after the data date',R.upd.fut,1);
  eq('CPLI below 1 when float is negative',R.upd.cpli<1,true);}
+
+{ // v7.9 expected finish
+ const mkE=()=>mk('E',{durWd:20,ee:D('2026-01-12')});
+ eq('expected finish: option on shortens finish',fmt(run([mkE()],{sched_use_expect_end_flag:'Y'}).ef.get('E')),'2026-01-12');
+ eq('expected finish: option off uses remaining duration',fmt(run([mkE()],{sched_use_expect_end_flag:'N'}).ef.get('E')),'2026-01-30');
+ eq('expected finish: setting forced on',fmt(E.recalc({dataDate:D('2026-01-05'),cal:{c:cal},tasks:[mkE()],so:{}},{expectFinish:'on'}).ef.get('E')),'2026-01-12');
+}
 console.log(n+' checks passed');
