@@ -1,3 +1,7 @@
+## v7.6
+Order of the trades on long projects.
+- The month strip showed one cell per month, so a project of two years or more had overlapping labels. It now uses at most 12 cells: months up to a year, then 2-month cells, quarters (Q1 to Q4), half-years, or years, aligned to the calendar. The year appears under the first cell of each year. Hover a cell for its exact period. The cards view uses the same periods.
+
 ## v7.5
 Order of the trades.
 - The trade timeline bars were drawn over the table header and looked full for any trade that runs the whole project. They are replaced by two views you can switch between, saved with the project: a month strip (each cell shaded by how many of the trade's activities are in progress) and trade cards (a small activity curve per trade, easy on a phone). Dates stay on one line.
