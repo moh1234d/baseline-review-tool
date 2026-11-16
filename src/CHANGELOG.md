@@ -1,3 +1,6 @@
+## v8.8 (2026-11-16)
+- Menu notes: hovering a menu item (or keyboard focus, or touch and hold for half a second on a phone) shows a small dark note with 3 to 4 short points on what the section does, plus what goes in and what comes out. Covers all 14 items. Setup has a switch to turn the notes off and a delay setting (ms).
+
 ## v8.7 (2026-11-16)
 - Recovery planner: the number of paths is now chosen by the user (box "Paths" next to the path list, 1 to 30; also a Setup field, default 3). The path list, Network, Parallel plots and Logic Gantt views all follow it. A message shows if fewer paths exist than asked.
 - Parallel plots: a later path can now split from any higher path, not only from Path 1. It starts one step after the car holding the shared activity (dashed arrow), and a table lists, for each path, which path it splits from and at which activity. Lane titles are cut to the box width (full text on hover).

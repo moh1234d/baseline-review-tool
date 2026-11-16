@@ -9,6 +9,10 @@
 #nav{background:#1b2a41;overflow-y:auto;color:#dfe7f0;padding:26px 16px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px}
 #nav .brand{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8fa3b8;margin:0 8px 2px}#nav h3{margin:0 8px 18px;padding-top:4px;font-size:18px;color:#fff;font-weight:650;line-height:1.25}
 #projname{margin:0 8px 14px;font-size:12.5px;color:#9fb2c6;border-left:3px solid var(--accent);padding-left:9px}
+#navtip{display:none;position:fixed;z-index:200;width:330px;max-width:calc(100vw - 16px);background:rgba(16,24,40,.97);color:#eef2f9;border-radius:10px;padding:12px 14px;box-shadow:0 12px 30px rgba(0,0,0,.38);pointer-events:none;font-size:13px}
+#navtip:before{content:"";position:absolute;left:-6px;top:var(--ay,26px);border:6px solid transparent;border-left:0;border-right:6px solid rgba(16,24,40,.97)}
+#navtip .nt-t{font-size:11px;letter-spacing:.1em;color:#8fb3ff;font-weight:700;text-transform:uppercase}#navtip ul{margin:6px 0 8px;padding:0;list-style:none;line-height:1.45}#navtip li{padding-left:16px;position:relative;margin:3px 0}#navtip li:before{content:"›";position:absolute;left:3px;color:#5dd6b4;font-weight:800}
+#navtip .nt-c{display:flex;gap:6px;flex-wrap:wrap;font-size:11px}#navtip .nt-c span{background:#26344f;border-radius:20px;padding:3px 9px}#navtip .nt-c .o{background:#14503f;color:#9ff0d3}
 .step{all:unset;display:flex;align-items:center;gap:11px;padding:10px 10px;border-radius:9px;cursor:pointer;color:#c4d1de;font-size:14px}.step:hover{background:#2a3d58}
 .step i{font-style:normal;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:13px;font-weight:700;background:#2f4059;color:#cfe0f1;flex:none}
 .step.on{background:#fff;color:#1b2a41;font-weight:600}.step.on i{background:var(--accent);color:#fff}.step.done:not(.on) i{background:#2e7d6b;color:#fff}

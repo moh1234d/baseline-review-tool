@@ -1,7 +1,7 @@
 """Builds dist/index.html (and dist/Baseline_Review_Tool_v<VERSION>.html) from src/ and the npm libraries."""
 import os, gzip, base64, json
 root = os.path.dirname(os.path.abspath(__file__)); src = os.path.join(root, 'src') + os.sep
-FILES = ['engine1','engine2','engine3','engine4','engine5','engine6','engine7','xerfields','engine8','engine9','engine10','engine11','engine12','engine13','engine14','engine15','engine16'] + ['app%d' % i for i in range(1, 27)]
+FILES = ['engine1','engine2','engine3','engine4','engine5','engine6','engine7','xerfields','engine8','engine9','engine10','engine11','engine12','engine13','engine14','engine15','engine16'] + ['app%d' % i for i in range(1, 28)]
 EFILES = [f for f in FILES if not f.startswith('app')]
 js = ''.join(open(src + f + '.js', encoding='utf-8').read() + '\n' for f in FILES)
 esrc = ''.join(open(src + f + '.js', encoding='utf-8').read() + '\n' for f in EFILES)
