@@ -1,5 +1,6 @@
 /* ===== APP PART 27 (v8.8): short note when hovering (or long-pressing on a phone) a menu item ===== */
 const NAVTIP = {
+  home: ['Home', ['Pick a goal: review, update, delay, build, claim, triage', 'Drop XER files and get suggested next steps', 'Continue a saved project in one click', 'Shows how the delay moved over the updates you loaded'], 'XER files (optional)', 'the right tool, with your files loaded'],
   portfolio: ['Portfolio triage', ['Load many XER files at once', 'Ranks projects by major findings and negative float', 'Shows which project to open first', 'Exports the ranking to Excel'], 'several XERs', 'ranked list · Excel'],
   quick: ['Quick review · XER only', ['One XER, no setup needed', 'Runs the main checks in seconds', 'Lists the top issues to fix first', 'Good for a first look at a new update'], '1 XER', 'findings list'],
   setup: ['1 · Project setup', ['Project name, dates and contract rules', 'Calendars: 8-hour day, Friday rest day, Ramadan as normal days', 'Thresholds and wording per audience', 'Every setting can be changed'], 'project details', 'saved settings'],

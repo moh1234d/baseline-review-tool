@@ -158,4 +158,4 @@ function resolveProfile() {
   if (p.finishCode && byCode[p.finishCode]) c.projFinishId = byCode[p.finishCode];
   S.pendingProfile = null;
 }
-let _saveT; function autosave() { clearTimeout(_saveT); _saveT = setTimeout(() => { if (S.cfg.projectName) LS.set('brt.profile.' + S.cfg.projectName, toProfile()); LS.set('brt.eid', S.cfg.eid); saveAiSettings(); }, 400); }
+let _saveT; function autosave() { clearTimeout(_saveT); _saveT = setTimeout(() => { if (S.cfg.projectName) LS.set('brt.profile.' + S.cfg.projectName, toProfile()); LS.set('brt.eid', S.cfg.eid); saveAiSettings(); if (typeof sessionSaveSoon === 'function') sessionSaveSoon(); }, 400); }
