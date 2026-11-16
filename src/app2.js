@@ -22,6 +22,7 @@ function renderNav() {
   $('#steps').innerHTML = NAV_GROUPS.map(([g, items, full]) => `<div class="sepl">${g}</div>` + items.map(item).join('') + (full ? `<div class="sepl sub">Full review</div>` + STEPS.map(([k, t], i) => `<button class="step ${S.step === k ? 'on' : ''} ${done[k] ? 'done' : ''}" data-go="${k}"><i>${i + 1}</i><span>${t}</span></button>`).join('') : '')).join('');
   $('#projname').textContent = S.cfg.projectName || 'New project';
   const [g, t] = navTitle(); $('#tb-group').textContent = g; $('#tb-title').textContent = t; $('#tb-proj').textContent = S.cfg.projectName || 'No project name';
+  if (typeof drChip === 'function') drChip();
   const ai = !!(S.cfg.ai && (S.step === 'recovery' ? S.cfg.ai.rp === true : S.cfg.ai.cmp === true)), tg = $('#tb-ai'), live = S.step === 'recovery' || S.step === 'compare';
   tg.innerHTML = '<span class="tsw"></span>AI'; tg.className = 'tbchip tbai' + (ai ? ' on' : '') + (live ? '' : ' ro'); tg.setAttribute('aria-checked', String(ai)); tg.title = live ? 'Claude AI for this page: ' + (ai ? 'on' : 'off') + ' (click to switch)' : 'AI switch is on the Schedule comparison and Recovery planner pages';
 }
@@ -35,7 +36,7 @@ function viewSetup() {
   <header class="ph"><h1>Project setup</h1><p>Enter the contract facts once. Everything has a sensible default; all limits are in whole calendar days.</p></header>
   ${(() => { let keys = []; try { keys = Object.keys(localStorage).filter(k => k.startsWith('brt.profile.')); } catch (e) { } return keys.length ? `<section class="card"><h2>Open a saved project</h2><div class="actions"><select id="open-proj" style="max-width:360px">${keys.map(k => `<option value="${esc(k)}">${esc(k.slice(12))}</option>`).join('')}</select><button class="btn" id="open-proj-go">Open</button><small class="hint">Settings, confirmations and review history are saved in this browser automatically. Load the XER again afterwards.</small></div></section>` : ''; })()}
   <section class="card"><h2>Project &amp; contract</h2><div class="grid">
-    ${fld('Project name', 'projectName', 'text', 'placeholder="e.g. P0076-CNT1569"')}
+    ${fld('Project name', 'projectName', 'text', 'placeholder="e.g. P0076-CNT1569"')}${fld('Project number (names the Google Drive folder)', 'projectNo', 'text', 'placeholder="e.g. P0076"')}
     ${fld('Contract value (SAR)', 'contractValue', 'num')}
     <label class="f"><span>Contract duration</span><span class="inl"><input data-p="durationValue" data-t="num" type="number" step="any" value="${esc(c.durationValue || '')}"><select data-p="durationUnit" data-t="str"><option value="months" ${c.durationUnit === 'months' ? 'selected' : ''}>months</option><option value="days" ${c.durationUnit === 'days' ? 'selected' : ''}>days</option></select></span></label>
     ${fld('Notice to proceed / commencement date', 'ntp', 'date')}
