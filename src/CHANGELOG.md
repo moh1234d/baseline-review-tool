@@ -1,3 +1,8 @@
+## v8.7 (2026-11-16)
+- Recovery planner: the number of paths is now chosen by the user (box "Paths" next to the path list, 1 to 30; also a Setup field, default 3). The path list, Network, Parallel plots and Logic Gantt views all follow it. A message shows if fewer paths exist than asked.
+- Parallel plots: a later path can now split from any higher path, not only from Path 1. It starts one step after the car holding the shared activity (dashed arrow), and a table lists, for each path, which path it splits from and at which activity. Lane titles are cut to the box width (full text on hover).
+- Quality check (text, boxes and arrows) re-run for 1, 2, 3, 5, 6, 8, 12 and 30 paths on views A, B and D: clean.
+
 ## v8.6 (2026-11-16)
 - Recovery planner views cleaned up and quality-checked: all box text is measured and wrapped (up to 3 lines) so nothing runs outside its box; the finish box no longer overlaps its date; in B · Parallel plots the lanes now run along one bus into the finish, so no arrow crosses another box or text. An automatic check (text vs text, text vs box, text outside its box or the chart, arrows through boxes or over text) ran clean on views A, B and D for paths 1 to 3, with the default levers and with every lever on.
 

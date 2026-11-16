@@ -48,40 +48,41 @@ function rpPathTrains(R) {
   const key = (R.paths || []).map(p => p.code).join('|') + '|' + JSON.stringify(S.cfg.train || {}) + '|' + (R.pathIdx || 0) + '|' + (R.tr && R.tr.train ? R.tr.train.target.code : ''); if (R.ptKey === key && R.pt) return R.pt;
   R.pt = (R.paths || []).map((p, i) => { if (i === (R.pathIdx || 0) && R.tr && R.tr.train) return { p, T: R.tr.train, sel: true }; try { return { p, T: E.delayTrain(R.A.M, R.B.M, { targetCode: p.code, cfg: trCfg(), chain: p.rank > 1 ? p.chain : null, joins: p.rank > 1 ? p.joins : null }), sel: false }; } catch (e) { return { p, T: null, err: e.message }; } }); R.ptKey = key; return R.pt;
 }
-/* what the paths share: the junction activity, the activities before it, and the link into the finish */
+/* what the paths share: where each later path joins a higher one, the activities shared before the first car, and the link into the finish */
 function rpInterfere(R) {
   const P = R.paths || [], L = rpPathTrains(R).filter(x => x.T), info = { lanes: L, joins: [], shared: [], ends: [] };
-  const p1 = P[0]; if (!p1) return info;
-  for (const x of L) if (x.p.joins) { const j = x.p.joins, ix = p1.chain.findIndex(t => t.id === j.id); info.joins.push({ lane: x, join: j, ix }); }
-  const mx = info.joins.length ? Math.max(...info.joins.map(j => j.ix)) : -1; info.shared = mx >= 0 ? p1.chain.slice(0, mx + 1) : [];
-  const tg = R.tr && R.tr.train ? null : null, M = R.B.M, t0 = L[0] && L[0].T ? M.tasks.find(t => t.code === L[0].T.target.code) : null;
-  for (const x of L) { const last = x.T.cars[x.T.cars.length - 1].rows[x.T.cars[x.T.cars.length - 1].rows.length - 1].t; const lastC = x.T.cars[x.T.cars.length - 1], rr = lastC.rows.map(r => r.t), pr = last === t0 ? rr[rr.length - 2] : last, lk = t0 && pr ? (t0.pre.find(l => l.from === pr) || null) : null; info.ends.push({ lane: x, last: pr || last, link: lk ? rpLk(lk) : null, isFinish: last === t0 }); }
+  if (!L.length) return info;
+  L.forEach((x, r) => { if (!r || !x.p.joins) return; const jn = x.p.joins; let j = -1; for (let q = 0; q < r; q++) if (L[q].p.chain.some(t => t.id === jn.id)) { j = q; break; }
+    if (j < 0) return; const car = L[j].T.cars.findIndex(c => c.rows.some(q => q.t.id === jn.id)), ix = L[j].p.chain.findIndex(t => t.id === jn.id); info.joins.push({ r, j, lane: x, parent: L[j], join: jn, car, carTitle: car >= 0 ? L[j].T.cars[car].title : null, ix }); });
+  const top = info.joins.filter(q => q.j === 0 && q.car < 0), mx = top.length ? Math.max(...top.map(q => q.ix)) : -1; info.shared = mx >= 0 ? L[0].p.chain.slice(0, mx + 1) : [];
+  const M = R.B.M, t0 = L[0].T ? M.tasks.find(t => t.code === L[0].T.target.code) : null;
+  for (const x of L) { const lastC = x.T.cars[x.T.cars.length - 1], rr = lastC.rows.map(r => r.t), last = rr[rr.length - 1], pr = last === t0 ? rr[rr.length - 2] : last, lk = t0 && pr ? (t0.pre.find(l => l.from === pr) || null) : null; info.ends.push({ lane: x, last: pr || last, link: lk ? rpLk(lk) : null, isFinish: last === t0 }); }
   return info;
 }
 function rpPlotsSvg(D, R) {
   const N = rpNums(D), I = rpInterfere(R), L = I.lanes; if (!L.length) return '<p class="hint">No path available.</p>';
   const w = 156, h = 84, gx = 30, gy = 58, selCars = new Set(D.train.cars.filter(c => D.lev && [...D.levOn].some(i => D.lev.levers[i].car === c.idx)).map(c => c.title));
-  const p1 = (R.paths || [])[0], trunk = I.shared.length > 0 && L[0].T && I.joins.every(j => j.ix >= 0), startIx = p1 && L[0].T.rows.length ? p1.chain.findIndex(t => t.id === L[0].T.rows[0].t.id) : -1;
-  const inside = trunk && startIx >= 0 && I.shared.length - 1 >= startIx;  /* junction lies inside lane 1's own cars */
   const lanesCars = L.map(x => x.T.cars.filter(c => !(c.phase === 'end' && (I.ends.find(e => e.lane === x) || {}).isFinish)));
-  const k0 = trunk && !inside ? 1 : 0, maxLen = Math.max(...lanesCars.map(c => c.length)), nCol = k0 + maxLen + 1, busGap = 64, W = nCol * (w + gx) + busGap + 10, rowH = h + gy, H = L.length * rowH + 30;
-  const px = i => 8 + i * (w + gx) + (i === nCol - 1 ? busGap : 0), py = r => 40 + r * rowH, mid = (L.length - 1) / 2;
+  const trunk = I.shared.length > 0, k0 = trunk ? 1 : 0, off = L.map(() => k0), jOf = L.map((x, r) => I.joins.find(q => q.r === r) || null);
+  L.forEach((x, r) => { const jn = jOf[r]; if (r && jn && jn.car >= 0) off[r] = off[jn.j] + jn.car + 1; });
+  const nCol = Math.max(...lanesCars.map((c, r) => off[r] + c.length)) + 1, busGap = 64, W = nCol * (w + gx) + busGap + 10, rowH = h + gy, H = L.length * rowH + 30;
+  const px = i => 8 + i * (w + gx) + (i === nCol - 1 ? busGap : 0), py = r => 40 + r * rowH;
   let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" font-family="Segoe UI, Arial, sans-serif">${rpMark}`;
   const nd = (c, x, y, sel, lane) => { let g = rpNode(c, x, y, w, h, sel ? D : { lev: null, levOn: new Set() }, sel ? N : { tg: lane.T.target, gain: 0 }, null, c.phase === 'end' ? c.title : null); if (!sel && c.phase !== 'end' && selCars.has(c.title)) g = g.replace('</g>', rpPill(x + w - 70, y + h - 22, 62, 'twin copy', true) + '</g>'); return g; };
-  /* shared start (blue box) */
-  const tH = 108, tx = px(0), ty = py(mid) + h / 2 - tH / 2;
-  if (k0) { const a = I.shared[0], z = I.shared[I.shared.length - 1], l1 = rpWrapT(rpShort(a.name, 40) + ' → ' + rpShort(z.name, 60), w - 18, 10, true, 3), cnt = I.shared.length + ' activities' + (I.shared.every(q => q.status === 'TK_Complete') ? ' · all complete' : '');
-    s += `<g><rect x="${tx}" y="${ty}" width="${w}" height="${tH}" rx="8" fill="#eef3fb" stroke="#1B2A41" stroke-width="2"/><text x="${tx + 9}" y="${ty + 16}" font-size="9" font-weight="700" fill="#1B2A41">SHARED BY ${L.length} PATHS</text>${l1.map((ln, i) => `<text x="${tx + 9}" y="${ty + 32 + i * 12}" font-size="10" font-weight="700" fill="#1d2433">${esc(ln)}</text>`).join('')}<text x="${tx + 9}" y="${ty + tH - 24}" font-size="9" fill="#5e6a7d">${esc(rpFit(cnt, w - 18, 9, false))}</text><text x="${tx + 9}" y="${ty + tH - 11}" font-size="9" fill="#5e6a7d">${esc(rpFit('junction ' + z.code, w - 18, 9, false))}</text></g>`; }
+  const tH = 108, tx = px(0), trunkRows = I.joins.filter(q => q.j === 0 && q.car < 0).map(q => q.r), ty = trunk ? (py(trunkRows[0]) + py(trunkRows[trunkRows.length - 1])) / 2 + h / 2 - tH / 2 : 0;
+  if (trunk) { const a = I.shared[0], z = I.shared[I.shared.length - 1], l1 = rpWrapT(rpShort(a.name, 40) + ' → ' + rpShort(z.name, 60), w - 18, 10, true, 3), cnt = I.shared.length + ' activities' + (I.shared.every(q => q.status === 'TK_Complete') ? ' · all complete' : '');
+    s += `<g><rect x="${tx}" y="${ty}" width="${w}" height="${tH}" rx="8" fill="#eef3fb" stroke="#1B2A41" stroke-width="2"/><text x="${tx + 9}" y="${ty + 16}" font-size="9" font-weight="700" fill="#1B2A41">SHARED BY ${1 + trunkRows.length} PATHS</text>${l1.map((ln, i) => `<text x="${tx + 9}" y="${ty + 32 + i * 12}" font-size="10" font-weight="700" fill="#1d2433">${esc(ln)}</text>`).join('')}<text x="${tx + 9}" y="${ty + tH - 24}" font-size="9" fill="#5e6a7d">${esc(rpFit(cnt, w - 18, 9, false))}</text><text x="${tx + 9}" y="${ty + tH - 11}" font-size="9" fill="#5e6a7d">${esc(rpFit('junction ' + z.code, w - 18, 9, false))}</text></g>`; }
   const finY = py(0) + h / 2, busX = px(nCol - 1) - busGap / 2 - 4;
-  L.forEach((x, r) => { const y = py(r), cs = lanesCars[r]; s += `<text x="${px(k0)}" y="${y - 24}" font-size="11" font-weight="700" fill="#1d2433">${esc(rpFit('Path ' + x.p.rank + (x.sel ? ' · selected' : '') + ' — ' + x.p.name, 4 * (w + gx), 11, true))}</text>`;
-    cs.forEach((c, i) => { const xx = px(k0 + i); s += nd(c, xx, y, x.sel, x); if (i) s += `<path d="M${px(k0 + i - 1) + w} ${y + h / 2} L${xx} ${y + h / 2}" stroke="#5e6a7d" stroke-width="1.6" marker-end="url(#rpa)"/>`; });
-    if (k0 && cs.length) { const x1 = tx + w, y1 = ty + tH / 2, x2 = px(k0), y2 = y + h / 2, mx = x1 + (x2 - x1) / 2; s += `<path d="M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}" fill="none" stroke="#1B2A41" stroke-width="2.2" marker-end="url(#rpt)"/>`; } });
-  if (trunk && inside) { const jc = lanesCars[0].findIndex(c => c.rows.some(q => q.t.id === (I.joins[0].join || {}).id)); L.forEach((x, r) => { if (r && x.p.joins && jc >= 0 && lanesCars[r].length) s += `<path d="M${px(k0 + jc) + w / 2} ${py(0) + h} V${py(r) + h / 2} H${px(k0) - 2}" fill="none" stroke="#1B2A41" stroke-width="2.2" stroke-dasharray="6 4" marker-end="url(#rpt)"/>`; }); }
-  /* the finish: all lanes run along a bus into it (nothing crosses a box) */
+  L.forEach((x, r) => { const y = py(r), cs = lanesCars[r]; const ttl = 'Path ' + x.p.rank + (x.sel ? ' · selected' : '') + ' — ' + x.p.name; s += `<text x="${px(off[r])}" y="${y - 24}" font-size="11" font-weight="700" fill="#1d2433"><title>${esc(ttl)}</title>${esc(rpFit(ttl, w, 11, true))}</text>`;
+    cs.forEach((c, i) => { const xx = px(off[r] + i); s += nd(c, xx, y, x.sel, x); if (i) s += `<path d="M${px(off[r] + i - 1) + w} ${y + h / 2} L${xx} ${y + h / 2}" stroke="#5e6a7d" stroke-width="1.6" marker-end="url(#rpa)"/>`; });
+    const jn = jOf[r]; if (r && cs.length && jn) {
+      if (jn.car >= 0) { const x1 = px(off[jn.j] + jn.car) + w, y1 = py(jn.j) + h * 0.8, gxm = x1 + gx / 2, x2 = px(off[r]), y2 = y + h / 2; s += `<path d="M${x1} ${y1} H${gxm} V${y2} H${x2}" fill="none" stroke="#1B2A41" stroke-width="2.2" stroke-dasharray="6 4" marker-end="url(#rpt)"/>`; }
+      else if (trunk) { const x1 = tx + w, y1 = ty + tH / 2, x2 = px(off[r]), y2 = y + h / 2, mx = x1 + (x2 - x1) / 2; s += `<path d="M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}" fill="none" stroke="#1B2A41" stroke-width="2.2" marker-end="url(#rpt)"/>`; } }
+    else if (!r && trunk && cs.length) { const x1 = tx + w, y1 = ty + tH / 2, x2 = px(off[0]), y2 = y + h / 2, mx = x1 + (x2 - x1) / 2; s += `<path d="M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}" fill="none" stroke="#1B2A41" stroke-width="2.2" marker-end="url(#rpt)"/>`; } });
   const fx = px(nCol - 1), fh = h, fy = finY - fh / 2, tg = N.tg;
   s += `<g><rect x="${fx}" y="${fy}" width="${w}" height="${fh}" rx="8" fill="#1B2A41"/><text x="${fx + 9}" y="${fy + 16}" font-size="9" font-weight="700" fill="#c9d3e3">ALL PATHS MEET</text>${rpWrapT(tg.name, w - 18, 10.5, true, 2).map((ln, i) => `<text x="${fx + 9}" y="${fy + 32 + i * 12}" font-size="10.5" font-weight="700" fill="#fff">${esc(ln)}</text>`).join('')}<text x="${fx + 9}" y="${fy + fh - 12}" font-size="16" font-weight="800" fill="#ffb4a8">${rpDays(tg.slip || 0)}</text></g>`;
-  const ys = L.map((x, r) => py(r) + h / 2); let busTo = Math.max(...ys);
-  L.forEach((x, r) => { const e = I.ends.find(q => q.lane === x), last = lanesCars[r].length - 1; if (last < 0) return; const xr = px(k0 + last) + w;
+  const ys = L.map((x, r) => py(r) + h / 2);
+  L.forEach((x, r) => { const e = I.ends.find(q => q.lane === x), last = lanesCars[r].length - 1; if (last < 0) return; const xr = px(off[r] + last) + w;
     if (r === 0) s += `<path d="M${xr} ${ys[0]} H${fx}" stroke="#5e6a7d" stroke-width="1.8" marker-end="url(#rpa)"/>`; else s += `<path d="M${xr} ${ys[r]} H${busX} V${ys[0]}" fill="none" stroke="#5e6a7d" stroke-width="1.8"/>`;
     if (e && e.link) s += `<text x="${busX - 6}" y="${ys[r] - 6}" font-size="9.5" font-weight="700" fill="#5e6a7d" text-anchor="end">${esc(e.link)}</text>`; });
   return s + '</svg>';
@@ -90,11 +91,10 @@ function rpInterfereHtml(R) {
   const I = rpInterfere(R); if (!I.lanes.length) return '';
   const j = I.joins, sh = I.shared, row = (a, b) => `<tr><td>${a}</td><td>${b}</td></tr>`;
   let t = '';
-  if (sh.length) t += row('Shared by all paths', `${sh.length} activit${sh.length === 1 ? 'y' : 'ies'}, from ${esc(rpShort(sh[0].name, 40))} (${esc(sh[0].code)}) to <b>${esc(rpShort(sh[sh.length - 1].name, 50))}</b> (${esc(sh[sh.length - 1].code)})${sh.every(a => a.status === 'TK_Complete') ? ' · all complete' : ''}`);
-  const jn = [...new Set(j.map(x => x.join.code))]; if (j.length) t += row('Where the paths split', `Paths ${j.map(x => x.lane.p.rank).join(' and ')} stop being traced at <b>${esc(jn.join(', '))}</b>: it is already on Path 1, so they share it and everything before it`);
-  else t += row('Where the paths split', 'No activity is shared between the paths shown.');
-  const meet = I.ends.map(e => `Path ${e.lane.p.rank}${e.isFinish ? ' → finish' + (e.link ? ' by ' + esc(e.link) : '') : e.link ? ' → finish by ' + esc(e.link) : ' ends at ' + esc(e.last.code)}`).join(' · ');
-  t += row('Where they meet again', esc(meet));
+  if (sh.length) t += row('Shared start', `${sh.length} activit${sh.length === 1 ? 'y' : 'ies'}, from ${esc(rpShort(sh[0].name, 40))} (${esc(sh[0].code)}) to <b>${esc(rpShort(sh[sh.length - 1].name, 50))}</b> (${esc(sh[sh.length - 1].code)})${sh.every(a => a.status === 'TK_Complete') ? ' · all complete' : ''}`);
+  if (j.length) j.forEach(q => { t += row(`Path ${q.lane.p.rank} splits`, `from Path ${q.parent.p.rank} at <b>${esc(q.join.code)}</b> — ${esc(rpShort(q.join.name, 60))}${q.car >= 0 ? ` (inside “${esc(rpShort(q.carTitle, 50))}”)` : ''}`); });
+  else if (I.lanes.length > 1) t += row('Where the paths split', 'No activity is shared between the paths shown.');
+  if (I.lanes.length > 1) t += row('Where they meet again', esc(I.ends.map(e => `Path ${e.lane.p.rank}${e.isFinish ? ' → finish' + (e.link ? ' by ' + e.link : '') : e.link ? ' → finish by ' + e.link : ' ends at ' + e.last.code}`).join(' · ')));
   t += row('How the paths are traced', 'Each later path is traced back through the driving links until it reaches an activity of a higher path (as in Delay analysis), so the activities shown in each lane do not repeat. Other, non-driving links between the plots are not drawn.');
   return `<table class="tbl rpv-int"><tbody>${t}</tbody></table>`;
 }
