@@ -1,3 +1,6 @@
+## v7.10 (2026-11-16)
+- New section "Tool assessment" (menu: About this tool): what the tool does, what it does not do yet, ranked enhancements with effort, and where AI can improve accuracy, with the rules for using AI. Filter tabs: All, Does, Does not, Enhance, AI.
+
 ## v7.9.1 (2026-11-16)
 - Friday is the weekly rest day: check L10d now flags calendars that work Fridays (setting in Setup, on by default).
 - Ramadan is treated as normal working days: reduced Ramadan hours are never flagged or counted (setting in Setup, on by default).

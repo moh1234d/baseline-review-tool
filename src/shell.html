@@ -71,6 +71,21 @@ details{margin-top:10px}summary{cursor:pointer;color:var(--accent);font-weight:6
 .tbchip{font-size:12px;font-weight:600;padding:4px 11px;border-radius:99px;background:var(--chip);color:var(--mut);white-space:nowrap}.tbchip.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}.tbchip.ver{background:var(--accent);color:#fff;letter-spacing:.02em}#tb-menu{all:unset;display:none;cursor:pointer;width:44px;height:44px;border-radius:10px;background:var(--chip);align-items:center;justify-content:center;font-size:20px;flex:none}
 .split{display:grid;grid-template-columns:minmax(300px,372px) minmax(0,1fr);align-items:start;min-height:calc(100vh - 64px)}.pane-in{background:var(--surface);border-right:1px solid var(--line);padding:22px 22px 30px;display:flex;flex-direction:column;gap:16px;min-height:calc(100vh - 64px)}.pane-out{padding:24px 32px 90px;min-width:0}.pane-in .lbl{font-size:11px;letter-spacing:.09em;font-weight:700;color:var(--mut)}.pane-in .card{box-shadow:none;margin:0;padding:14px 16px}.pane-in .grid{grid-template-columns:1fr}.pane-in .fileb{border:1px solid var(--line);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column}.pane-in .fileb small{color:var(--mut)}.pane-in .dlset{flex-direction:column;gap:10px}.pane-in .dlset label,.pane-in .dlset #d-target{min-width:0;max-width:100%;width:100%}.pane-in .seg2{grid-template-columns:1fr}.actions.stack{flex-direction:column;align-items:stretch}.actions.stack .btn{justify-content:flex-start}
 @media(max-width:1000px){.split{grid-template-columns:1fr}.split.has-res .pane-out{order:-1}.pane-in{min-height:0;border-right:0;border-bottom:1px solid var(--line)}.pane-out{padding:18px 16px 90px}}
+
+.as-wrap{padding:20px max(16px,2vw) 32px}
+.as-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+.as-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:14px;align-items:start}
+.as-grid .card{margin:0;min-width:0}
+.as-does{border-top:4px solid var(--ok)}.as-doesnt{border-top:4px solid var(--bad)}.as-enhance{border-top:4px solid var(--accent)}.as-ai{border-top:4px solid #7a4fb5}
+.as-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.as-list li{display:grid;grid-template-columns:auto 1fr;column-gap:8px;row-gap:2px;padding:9px 0;border-top:1px solid var(--line);align-items:baseline}
+.as-list li:first-child{border-top:0}
+.as-list li>.chip{grid-row:1;align-self:center}.as-list li>.chip+.chip{margin-left:4px}
+.as-list li>b{grid-column:2;font-size:13.5px}
+.as-list li>span:not(.chip),.as-list li>em{grid-column:1/-1;color:var(--mut);font-size:12.5px;line-height:1.45}
+.as-list li>em{font-style:normal;color:#7a4fb5;font-size:11.5px}
+.as-list li:has(.chip+.chip){grid-template-columns:auto auto 1fr}.as-list li:has(.chip+.chip)>b{grid-column:3}
+.as-h3{font-size:13px;margin:16px 0 6px}.as-rules{margin:0;padding-left:18px;font-size:12.5px;line-height:1.55;color:var(--ink)}
 </style></head>
 <body><div id="app">
 <aside id="nav"><div class="brand">Baseline Review Tool</div><h3>Schedule review</h3><div id="projname"></div><div id="steps"></div>
