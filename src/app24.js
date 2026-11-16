@@ -11,7 +11,7 @@ function runTrain(k) {
   try { D.train = E.delayTrain(ab[0], Bm, { targetCode: tcode, cfg: trCfg() }); } catch (e) { console.error(e); D.trainErr = e.message; return; }
   D.trainSel = D.train && D.train.origin ? D.train.cars.findIndex(c => c.isOrigin) : 0; D.levBusy = true;
   setTimeout(() => {
-    try { const hw = Object.assign({}, E.DELAY_DEFAULTS, S.cfg.delay || {}).holdWords; D.lev = E.trainLevers(Bm, D.train, { holdWords: hw });
+    try { const hw = Object.assign({}, E.DELAY_DEFAULTS, S.cfg.delay || {}).holdWords; D.lev = E.trainLevers(Bm, D.train, { holdWords: hw, seqCfg: S.cfg });
       /* start with the best contractor lever of each car switched on (authority steps need the employer, so they start off) */
       const best = new Map(); D.lev.levers.forEach((l, i) => { if (l.gain > 0 && l.kind !== 'parallel' && (!best.has(l.car) || l.gain > D.lev.levers[best.get(l.car)].gain)) best.set(l.car, i); });
       D.levOn = new Set(best.values()); trainComb(k);
@@ -22,6 +22,15 @@ function runTrain(k) {
 }
 function trainComb(k) { const D = trSt(k), ab = trAB(k); if (!D.lev || !ab) return; const Bm = ab[1]; const on = [...D.levOn].sort((a, b) => D.lev.levers[a].car - D.lev.levers[b].car || D.lev.levers[b].gain - D.lev.levers[a].gain).map(i => D.lev.levers[i]); D.r0 = D.r0 || E.recalc(Bm, {}); D.comb = E.trainCombine(Bm, on, { r0: D.r0 }); if (k === 'rp') D.seq = E.trainSequence(Bm, on, { r0: D.r0 }); }
 const trD = (v, unit) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + (unit === false ? '' : ' d');
+function trSettings(k) {
+  const c0 = trCfg(), set = (key, lab, step) => `<label class="f"><span>${lab}</span><input type="number" min="0" step="${step || 1}" data-trset="${k}:${key}" value="${esc(c0[key])}"></label>`;
+  const hp = (c0.hardPairs || E.TRAIN_HARD).map(r => r[0] + ' => ' + r[1] + (r[2] ? ' | ' + r[2] : '')).join('\n'), uh = c0.userHard || [];
+  return `<details class="tr-set"><summary>Delay train and lever settings</summary><div class="actions" style="flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:8px">${set('originMin', 'Delay starts at the first activity adding at least (days)')}${set('maxCars', 'Number of cars (about)')}${set('startAtPct', 'Overlap: start when the predecessor is (% done)')}${set('overlapMinWd', 'Overlap: only activities of at least (working days); same area needs twice this')}${set('lagMin', 'Long lag: from (working days)')}${set('lagTo', 'Shorten long lags to (working days)')}${set('crewPct', 'Extra crew / second shift: duration −(%)')}${set('minRemWd', 'Skip activities with less remaining than (working days)')}
+  <label class="f"><span>Apply levers to identical copies (same activity in other plots or blocks)</span><select data-trset="${k}:twins"><option value="1" ${c0.twins ? 'selected' : ''}>Yes</option><option value="0" ${c0.twins ? '' : 'selected'}>No, this car only</option></select></label>
+  <label class="f" style="min-width:min(100%,420px)"><span>Authority and approval words (never sped up by crews; may run in parallel)</span><input type="text" data-trset="${k}:authWords" value="${esc(c0.authWords)}"></label>
+  <label class="f" style="flex:1 1 100%"><span>Never overlap — physical constraints, one per line: predecessor words => successor words | name</span><textarea rows="7" data-trset="${k}:hardPairs" style="width:100%;font:12px ui-monospace,monospace">${esc(hp)}</textarea></label>
+  <div class="f" style="flex:1 1 100%"><span>Pairs you marked “never overlap” (${uh.length})</span><div class="hint">${uh.length ? uh.map(x => esc(x[0] + ' → ' + x[1])).join(' · ') + ` <button class="btn sm" data-trclearhard="${k}">Clear</button>` : 'none yet — use “never overlap” on a lever card'}</div></div></div></details>`;
+}
 function trainHtml(k) {
   k = k || 'dl'; const D = trSt(k), T = D.train; if (!T) return D.trainErr ? `<div class="warnbox">${esc(D.trainErr)}</div>` : '';
   const c0 = trCfg(), o = T.origin, oc = T.cars.find(c => c.isOrigin), lev = D.lev ? D.lev.levers : [], tg = T.target;
@@ -54,16 +63,13 @@ function trainHtml(k) {
     h += `<div class="tr-meter"><b>Ticked levers together: ${g > 0 ? '−' + g : '0'} d</b><div class="tr-bar"><i style="width:${pct}%"></i></div><div class="tr-lab"><span>Recovered ${g} d</span><span>Remaining ${Math.max(0, (tg.slip || 0) - g)} d of ${trD(tg.slip || 0)}</span></div></div>
       <p class="hint" style="margin-top:6px">Levers do not simply add up: once one path is shortened, another path drives the finish. Every lever ticked: −${D.levAll || 0} d. Numbers come from the tool's simplified recalculation (no resource levelling); whether a lever is possible on site is for the reviewer to judge.</p>`;
     return h; })();
-  const set = (key, lab, step) => `<label class="f"><span>${lab}</span><input type="number" min="0" step="${step || 1}" data-trset="${k}:${key}" value="${esc(c0[key])}"></label>`;
   return `<section class="card tr-card"><h2>Delay train <small>where the delay entered the driving chain, and where it can be won back</small></h2>
   <div class="tr-kpi"><div class="vt ${tg.slip > 0 ? 'bad' : 'info'}"><span>Finish moved</span><b>${trD(tg.slip || 0)}</b><small>${esc(E.fmtDate(tg.fA))} → ${esc(E.fmtDate(tg.fB))}</small></div><div class="vt bad"><span>Delay starts at</span><b style="font-size:15px">${o ? esc(dtr(o.name, 46)) : '–'}</b><small>${o ? trD(o.own) + ' · ' + esc(o.code) : ''}</small></div><div class="vt info"><span>Done work added / recovered</span><b>${trD(T.added)} / ${T.recovered ? '−' + Math.abs(T.recovered) + ' d' : '0'}</b><small>${T.rows.length} activities on the chain</small></div><div class="vt ${D.levAll > 0 ? 'ok' : 'info'}"><span>Levers ahead (tested)</span><b>${D.levBusy ? '…' : (D.levAll > 0 ? '−' + D.levAll : '0') + ' d'}</b><small>all levers together</small></div></div>
   <div class="tr-train">${T.cars.map(car).join('')}</div>
   <p class="hint" style="margin:4px 0 10px">Grey = done, amber = in progress, white = still to come. Click a car to see its activities; the levers are on the right.</p>
   <div class="cause tr-read"><b>Reading:</b> ${read}</div>
   <div class="tr-f"><div class="tr-fl">${left}</div><div class="tr-fr"><h3 class="bt" style="margin-top:0">Mitigation levers (tested)</h3>${right}</div></div>
-  <details class="tr-set"><summary>Delay train settings</summary><div class="actions" style="flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:8px">${set('originMin', 'Delay starts at the first activity adding at least (days)')}${set('maxCars', 'Number of cars (about)')}${set('startAtPct', 'Overlap: start when the predecessor is (% done)')}${set('lagMin', 'Long lag: from (working days)')}${set('lagTo', 'Shorten long lags to (working days)')}${set('crewPct', 'Extra crew / second shift: duration −(%)')}${set('minRemWd', 'Skip activities with less remaining than (working days)')}
-  <label class="f"><span>Apply levers to identical copies (same activity in other plots or blocks)</span><select data-trset="${k}:twins"><option value="1" ${c0.twins ? 'selected' : ''}>Yes</option><option value="0" ${c0.twins ? '' : 'selected'}>No, this car only</option></select></label>
-  <label class="f" style="min-width:min(100%,420px)"><span>Authority and approval words (never sped up by crews; may run in parallel)</span><input type="text" data-trset="${k}:authWords" value="${esc(c0.authWords)}"></label></div></details></section>`;
+  ${trSettings(k)}</section>`;
 }
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-trcar]'); if (!b) return; const [k, i] = b.dataset.trcar.split(':'); trSt(k).trainSel = +i; trRender(k); });
 document.addEventListener('change', e => {
@@ -71,8 +77,12 @@ document.addEventListener('change', e => {
   if (el.dataset.trlev !== undefined) { const [k, i] = el.dataset.trlev.split(':'), D = trSt(k); if (el.checked) D.levOn.add(+i); else D.levOn.delete(+i); trainComb(k); trRender(k); return; }
   if (el.dataset.trset !== undefined) { const [k, key] = el.dataset.trset.split(':'); S.cfg.train = S.cfg.train || {};
     if (key === 'twins') S.cfg.train.twins = el.value === '1';
+    else if (key === 'hardPairs') { const rows = []; for (const ln of el.value.split('\n')) { const m = ln.match(/^(.*?)=>(.*?)(?:\|(.*))?$/); if (!m) continue; try { new RegExp(m[1].trim(), 'i'); new RegExp(m[2].trim(), 'i'); } catch (err) { toast('Not a valid pattern: ' + ln, 'bad'); return; } rows.push([m[1].trim(), m[2].trim(), (m[3] || '').trim()]); } S.cfg.train.hardPairs = rows; }
     else if (key === 'authWords') { try { new RegExp(el.value, 'i'); S.cfg.train.authWords = el.value; } catch (err) { toast('Not a valid word list', 'bad'); return; } }
     else { const v = parseFloat(el.value); if (isNaN(v) || v < 0) { toast('Enter a number of 0 or more', 'bad'); return; } S.cfg.train[key] = v; }
     runTrain(k); trRender(k); }
 });
 document.addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('tr-lists')) S.cmp.listsOpen = e.target.open; }, true);
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-trclearhard],[data-trhard]'); if (!b) return; e.preventDefault(); S.cfg.train = S.cfg.train || {};
+  if (b.dataset.trclearhard) { S.cfg.train.userHard = []; runTrain(b.dataset.trclearhard); trRender(b.dataset.trclearhard); return; }
+  const [k, a, c] = b.dataset.trhard.split('\u0001'); const l = S.cfg.train.userHard = S.cfg.train.userHard || []; if (!l.some(x => x[0] === a && x[1] === c)) l.push([a, c]); toast('Marked: never overlap “' + a + '” → “' + c + '”', 'ok'); runTrain(k); trRender(k); });

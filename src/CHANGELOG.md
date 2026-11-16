@@ -1,3 +1,16 @@
+## v8.2 (2026-11-16)
+Recovery levers now respect construction logic.
+- An overlap is offered only when the link is not a physical constraint and the work can really overlap. Every finish-to-start link inside a stage is checked:
+  1. Never overlap: physical-constraint pairs (formwork → rebar → shuttering closure → pour → de-shuttering, post-tensioning → pour, pipes → waterproofing → flood test / screed / tiles, tests → ceiling closing, conduits → plaster, plaster → waterproofing / paint, floor drain → floor finishes, ceiling → final paint). Editable list in the settings.
+  2. Never overlap: the sequence rules already marked "no overlap" (Order of the trades).
+  3. Too short to split: the predecessor must have at least 10 working days left (setting).
+  4. Allowed when the two activities are in a different building, floor or zone; or the contractor already links the same pair start-to-start elsewhere (precedent); or, in the same area, the predecessor is at least twice the minimum, so the next trade can start on finished parts (marked "check").
+- Each overlap card shows how many links may overlap and why, and how many stay finish-to-start and why. Each example link has a "never overlap" button; marked pairs are remembered in the settings and never suggested again.
+- Structural slab cycles are no longer overlapped; extra crews / second shift stays as the lever there.
+- The report's corrective action for an overlap states how many links change and on what grounds; the appendix shows the reason for each changed link.
+- Lever settings are now also on the Recovery planner page.
+- Fixed: floors compared as objects, so two equal floors counted as different areas.
+
 ## v8.1 (2026-11-16)
 New page "Recovery planner" (Compare and analyse), wide screen:
 - Top: baseline finish, current forecast, finish with the selected levers, remaining delay, where the delay started.

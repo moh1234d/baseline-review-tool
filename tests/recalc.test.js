@@ -46,4 +46,12 @@ const assert=require('assert');let n=0;const eq=(name,got,want)=>{assert.strictE
  eq('train: origin is the activity that overran',Tr.origin.code,'B');eq('train: delay it added (calendar days)',Tr.origin.own,14);eq('train: finish slip',Tr.target.slip,14);
  const t=mk('R',{durWd:20,remWd:5});eq('recalc uses stored remaining duration without the raw rows',fmt(E.recalc({dataDate:D('2026-01-05'),cal:{c:cal},tasks:[t],so:{}},{}).ef.get('R')),'2026-01-09');
 }
+
+{ // v8.2 physical constraints are never overlapped
+ const hit=(a,b)=>E.TRAIN_HARD.some(([p,s])=>new RegExp(p,'i').test(a)&&new RegExp(s,'i').test(b));
+ eq('rebar -> pour is a physical constraint',hit('REBARING FOR THIRD FLOOR SLAB ZONE B','POURING FOR THIRD FLOOR SLAB ZONE B'),true);
+ eq('waterproofing -> porcelain is a physical constraint',hit('5 Floor/ Zone B / WATERPROOFING - WET Area','5 Floor/ Zone B / FLOOR FINISHES - PORCELAIN'),true);
+ eq('masonry -> conduits is not',hit('MASONRY WORKS Internal','CONDUITS LIGHTING'),false);
+ eq('names compared without floor and zone',E.trainNorm('5 Floor/ Zone B / PLASTER WORKS - WET Area'),E.trainNorm('3 Floor/ Zone A / PLASTER WORKS - WET Area'));
+}
 console.log(n+' checks passed');
