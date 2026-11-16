@@ -8,7 +8,7 @@ const LS = { get(k, d) { try { const v = localStorage.getItem(k); return v == nu
 
 const S = { cfg: E.defaultCfg(), M: null, out: null, step: 'setup', files: {}, history: [], commentNo: {}, ui: { filter: 'fail' }, raw: {} };
 S.cfg.eid = LS.get('brt.eid', []);
-(function () { const a = LS.get('brt.ai', null); if (a) { S.cfg.ai.on = !!a.on; S.cfg.ai.cmp = a.cmp === true; S.cfg.ai.remember = !!a.remember; S.cfg.ai.key = a.remember ? (a.key || '') : ''; S.cfg.ai.models = a.models || {}; S.cfg.ai.prices = a.prices; } })();
+(function () { const a = LS.get('brt.ai', null); if (a) { S.cfg.ai.on = !!a.on; S.cfg.ai.cmp = a.cmp === true; S.cfg.ai.rp = a.rp === true; S.cfg.ai.remember = !!a.remember; S.cfg.ai.key = a.remember ? (a.key || '') : ''; S.cfg.ai.models = a.models || {}; S.cfg.ai.prices = a.prices; } })();
 
 function toast(msg, kind) {
   let t = $('#toast'); t.textContent = msg; t.className = 'show ' + (kind || ''); clearTimeout(toast._t); toast._t = setTimeout(() => t.className = '', 4200);
@@ -117,7 +117,7 @@ async function callClaude(task, system, content, maxTokens) {
   return j.content.map(c => c.text || '').join('');
 }
 function parseJson(txt) { const m = /```(?:json)?\s*([\s\S]*?)```/.exec(txt); const s = m ? m[1] : txt; const a = s.indexOf('{'), b = s.lastIndexOf('}'); const a2 = s.indexOf('['), b2 = s.lastIndexOf(']'); try { if (a2 >= 0 && (a < 0 || a2 < a)) return JSON.parse(s.slice(a2, b2 + 1)); return JSON.parse(s.slice(a, b + 1)); } catch (e) { throw new Error('Claude did not return valid JSON'); } }
-function saveAiSettings() { LS.set('brt.ai', { on: S.cfg.ai.on, cmp: S.cfg.ai.cmp === true, remember: !!S.cfg.ai.remember, key: S.cfg.ai.remember ? S.cfg.ai.key : '', models: S.cfg.ai.models, prices: S.cfg.ai.prices }); }
+function saveAiSettings() { LS.set('brt.ai', { on: S.cfg.ai.on, cmp: S.cfg.ai.cmp === true, rp: S.cfg.ai.rp === true, remember: !!S.cfg.ai.remember, key: S.cfg.ai.remember ? S.cfg.ai.key : '', models: S.cfg.ai.models, prices: S.cfg.ai.prices }); }
 
 /* ---------- profile (settings & confirmations per project) ---------- */
 function toProfile() {

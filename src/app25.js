@@ -89,8 +89,8 @@ function viewRecovery() {
   const card = ([l, i]) => { const on = D.levOn.has(i), c = T.cars[l.car], m = marg.get(l), gtxt = l.gain > 0 ? `−${l.gain} d alone${on && m != null && m !== l.gain ? ` · −${Math.max(0, m)} d in this combination` : ''}` : '0 d';
     return `<label class="rp-lc ${on ? 'on' : ''} ${l.gain > 0 ? '' : 'nil'}"><div class="rp-lh"><input type="checkbox" class="rp-sw" data-trlev="rp:${i}" ${on ? 'checked' : ''}><b>${esc(l.label)} <small class="rp-wh">· ${esc(rpWhere(T, l))}</small></b><em>${gtxt}</em></div><p>${esc(l.who)} · ${l.n} change${l.n === 1 ? '' : 's'}${l.copies > 1 ? ' · all ' + l.copies + ' identical copies (this car alone: ' + (l.gainCarOnly > 0 ? '−' + l.gainCarOnly : '0') + ' d)' : ''} · ${esc(l.how)}</p>${l.why ? `<div class="rp-why">${rpWhy(l.why)}</div>` : ''}${flow(l)}</label>`; };
   const right = D.levBusy ? '<p class="hint">…</p>' : (lev.length ? lev.map(card).join('') : '<p class="hint">No lever found on the work still to come.</p>') + `<div class="rp-btns"><button class="btn primary" data-rprep="docx" ${N.nOn ? '' : 'disabled title="Switch on at least one lever"'}>Generate recovery report (Word)</button><button class="btn" data-rprep="xlsx">Export lever table (Excel)</button></div><p class="hint" style="margin-top:8px">Numbers from the tool's what-if recalculation (no resource levelling); the finish with levers is the current P6 finish minus the days recovered. Whether a lever is possible on site is for the reviewer to judge. </p>${trSettings('rp')}`;
-  h += `<div class="rp-g2"><section class="card">${left}</section><section class="card"><h2>Mitigation levers</h2>${right}</section></div></div>`;
-  $('#main').innerHTML = h;
+  h += `<div class="rp-g2"><section class="card">${left}</section><section class="card"><h2>Mitigation levers</h2>${right}</section></div>${rpAiPanel(D, R, T)}</div>`;
+  $('#main').innerHTML = h; rpAiDecorate();
 }
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-rpcar]'); if (!b) return; const D = trSt('rp'), i = +b.dataset.rpcar; D.rpSel = D.rpSel === i ? null : i; trRender('rp'); });
 document.addEventListener('change', e => { const el = e.target; if (el.type === 'file' && (el.id === 'rp-A' || el.id === 'rp-B') && el.files.length) rpLoad(el.id.slice(3), el.files[0]); if (el.id === 'rp-npaths') { const n = Math.max(1, Math.min(30, Math.round(+el.value || 3))); S.cfg.rpPaths = n; try { autosave(); } catch (x) { } S.rp.pathIdx = Math.min(S.rp.pathIdx || 0, n - 1); runTrain('rp'); viewRecovery(); return; } if (el.id === 'rp-path') { S.rp.pathIdx = +el.value; runTrain('rp'); viewRecovery(); } });
@@ -106,6 +106,7 @@ function rpActions(D) {
     if (l.kind === 'parallel') auth.push([`Agree with the authority and the employer to run the approval and handover steps of “${where}” in parallel (each starting 2 days after the previous one starts).`, d, l]); }
   if (o) con.push([`Explain the overrun of “${o.name}” (${o.code}${o.pDur != null ? `: ${o.pDur} d planned, ${o.cDur} d taken` : ''}), where the delay started, and the measures now in place.`, null]);
   if (big && big !== o && big.own > 0) con.push([`Explain the overrun of “${big.name}” (${big.code}${big.pDur != null ? `: ${big.pDur} d planned, ${big.cDur} d taken` : ''}), the largest single addition (${rpDays(big.own)}).`, null]);
+  if (rpAiOn()) { for (const arr of [con, auth]) for (const a of arr) { if (a[2]) { const w = rpAiAccepted(D, D.lev.levers.indexOf(a[2])); if (w) a[0] = w; } else if (o && /^Explain the overrun of/.test(a[0]) && a[0].includes(o.code)) { const w = rpAiAccepted(D, 'origin'); if (w) a[0] = w; } } }
   return { con, auth };
 }
 /* ---------- Word report ---------- */

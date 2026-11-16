@@ -1,3 +1,8 @@
+## v8.9 (2026-11-16)
+- Recovery planner AI (OFF by default; switch on the page and in Setup → AI; needs your own Claude key and consent). Claude gives a second opinion: delay cause per car with confidence, a logic verdict per lever (sound / check / illogical), extra ideas (not recalculated), action wording for the contractor or the employer, and questions to check with the contractor. Every AI item is marked "AI suggestion" and has Accept / Reject; accepted wording goes into the Word report and Excel. Claude never supplies a number.
+- Privacy: only activity names, day counts and lever shapes are sent (no cost, resources, file or project name); activity codes are replaced by A1, A2… unless you choose otherwise; an estimate of the cost is shown before each run.
+- "With AI against without AI" table: engine-only plan against the AI-vetted plan (levers called illogical taken out, days recalculated by the engine), counts of causes, verdicts, actions, questions and your accept / reject decisions; button to switch off the illogical levers; download as .xlsx.
+
 ## v8.8 (2026-11-16)
 - Menu notes: hovering a menu item (or keyboard focus, or touch and hold for half a second on a phone) shows a small dark note with 3 to 4 short points on what the section does, plus what goes in and what comes out. Covers all 14 items. Setup has a switch to turn the notes off and a delay setting (ms).
 

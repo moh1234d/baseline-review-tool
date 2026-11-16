@@ -21,7 +21,7 @@ function renderNav() {
   $('#steps').innerHTML = NAV_GROUPS.map(([g, items, full]) => `<div class="sepl">${g}</div>` + items.map(item).join('') + (full ? `<div class="sepl sub">Full review</div>` + STEPS.map(([k, t], i) => `<button class="step ${S.step === k ? 'on' : ''} ${done[k] ? 'done' : ''}" data-go="${k}"><i>${i + 1}</i><span>${t}</span></button>`).join('') : '')).join('');
   $('#projname').textContent = S.cfg.projectName || 'New project';
   const [g, t] = navTitle(); $('#tb-group').textContent = g; $('#tb-title').textContent = t; $('#tb-proj').textContent = S.cfg.projectName || 'No project name';
-  const ai = !!(S.cfg.ai && S.cfg.ai.cmp === true); $('#tb-ai').textContent = ai ? 'AI on' : 'AI off'; $('#tb-ai').className = 'tbchip' + (ai ? ' on' : '');
+  const ai = !!(S.cfg.ai && (S.step === 'recovery' ? S.cfg.ai.rp === true : S.cfg.ai.cmp === true)); $('#tb-ai').textContent = ai ? 'AI on' : 'AI off'; $('#tb-ai').className = 'tbchip' + (ai ? ' on' : '');
 }
 function go(step) { S.step = step; $('#main').classList.remove('wide'); renderNav(); const f = { setup: viewSetup, files: viewFiles, confirm: viewConfirm, run: viewRun, report: viewReport, quick: viewQuick, portfolio: viewPortfolio, compare: viewCompare, delay: viewDelay, builder: viewBuilder, claims: viewClaims, roundtrip: viewRoundtrip, assess: viewAssess, recovery: viewRecovery }[step]; $('#main').scrollTop = 0; window.scrollTo(0, 0); f(); }
 
@@ -66,6 +66,7 @@ function viewSetup() {
   <section class="card"><h2>AI assistance <small>optional – never decides pass / fail</small></h2>
     <label class="sw"><input type="checkbox" data-p="ai.on" data-t="bool" ${c.ai.on ? 'checked' : ''}><span>Use Claude for this project</span></label>
     <div class="aiopts ${c.ai.on ? '' : 'off'}"><div class="grid">${fld('Claude API key (kept only while this page is open unless you tick Remember)', 'ai.key', 'password', 'autocomplete="off"')}</div>
+    <label class="sw"><input type="checkbox" data-p="ai.rp" data-t="bool" ${c.ai.rp ? 'checked' : ''}><span>Use Claude in the Recovery planner (off by default; second opinion on causes, levers and wording, never a number)</span></label>
     <label class="sw"><input type="checkbox" data-p="ai.remember" data-t="bool" ${c.ai.remember ? 'checked' : ''}><span>Remember the key in this browser (off = forgotten when the page closes; do not tick on a shared computer)</span></label>
     <label class="sw"><input type="checkbox" data-p="ai.consent" data-t="bool" ${c.ai.consent ? 'checked' : ''}><span>I agree that when I run a Claude step, what that step reads is sent from this browser to Anthropic. Depending on the step this can be: contract text, BOQ pages (including rates and amounts), a layout drawing as an image, the programme narrative, activity names, codes, dates and days. Check that your Employer allows this first. Nothing is sent otherwise. Each step shows its estimated cost first.</span></label>
     <table class="tbl compact"><thead><tr><th>Task</th><th>Model</th></tr></thead><tbody>${AI_TASKS.map(t => `<tr><td>${t.label}</td><td><input list="models" data-aim="${t.id}" value="${esc(modelFor(t.id))}"></td></tr>`).join('')}</tbody></table>
