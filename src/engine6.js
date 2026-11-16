@@ -47,7 +47,11 @@ E.compare = function (A, B, opt) {
     add('Not started', num(stat(A, 'TK_NotStart'), 0), num(stat(B, 'TK_NotStart'), 0), numDelta(stat(A, 'TK_NotStart'), stat(B, 'TK_NotStart'), 0));
     add('Critical activities (total float ≤ 0)', num(A.tasks.filter(isCrit).length, 0), num(B.tasks.filter(isCrit).length, 0), numDelta(A.tasks.filter(isCrit).length, B.tasks.filter(isCrit).length, 0, true));
     blk(s, '', ['Item', 'Previous', 'Current', 'Change'], rows, { counts: false, num: [1, 2] });
-    s.different = (A.proj.proj_short_name || '') !== (B.proj.proj_short_name || '');
+    /* v7.10.1: the P6 project ID changes with every revision or copy, so it says nothing about whether two files are the same project.
+       Same project = enough activity IDs in common (share of the smaller file; setting cmpMinShared, default 30%). */
+    const minN = Math.min(A.tasks.length, B.tasks.length) || 1, shared = both.length / minN, lim = ((opt && opt.cfg && opt.cfg.cmpMinShared) != null ? opt.cfg.cmpMinShared : 30) / 100;
+    s.shared = { n: both.length, pct: Math.round(100 * shared) };
+    s.different = shared < lim;
     R.overview = { startDelta: B.minES - A.minES, finishDelta: B.maxEF - A.maxEF, dataDelta: (B.dataDate != null && A.dataDate != null) ? B.dataDate - A.dataDate : null };
   }
 

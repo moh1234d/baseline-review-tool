@@ -1,3 +1,6 @@
+## v7.10.1 (2026-11-16)
+- Schedule comparison: the "different project" warning no longer compares the P6 project ID (it changes with every revision or copy). It now warns only when fewer than 30% of activity IDs match between the two files (setting in Setup) and states how many matched.
+
 ## v7.10 (2026-11-16)
 - New section "Tool assessment" (menu: About this tool): what the tool does, what it does not do yet, ranked enhancements with effort, and where AI can improve accuracy, with the rules for using AI. Filter tabs: All, Does, Does not, Enhance, AI.
 
