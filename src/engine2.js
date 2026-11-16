@@ -1,6 +1,6 @@
 /* ===== ENGINE PART 2: checks ===== */
 E.defaultCfg = () => ({
-  projectName: '', contractValue: null, durationValue: null, durationUnit: 'months', ntp: '', ntpTol: 0, finishTol: 1,
+  projectName: '', projectNo: '', contractValue: null, durationValue: null, durationUnit: 'months', ntp: '', ntpTol: 0, finishTol: 1,
   milestones: [], reviewDays: null, projectType: 'infrastructure', fileType: 'baseline',
   weights: { engineering: 7, procurement: 13, construction: 75, handover: 5 },
   weightGroup: { general: 'engineering', mobilization: 'engineering', engineering: 'engineering', procurement: 'procurement', delivery: 'procurement', construction: 'construction', closeout: 'handover' },

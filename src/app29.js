@@ -38,28 +38,76 @@ async function svRestore(rec) {
   } else if (rec.rp) { go('recovery'); toast('The XER files were not saved. Add ' + rec.rp.A.name + ' and ' + rec.rp.B.name + ' again.', 'warn'); }
   else go(rec.lastStep && rec.lastStep !== 'home' ? rec.lastStep : 'setup');
 }
-/* ---------- Google Drive (optional; needs your own Google client ID; only files this tool created are visible) ---------- */
-const DR = { tok: null, exp: 0, folder: null, last: 0, err: '', ready() { return !!this.tok && Date.now() < this.exp - 60000; } };
+/* ---------- Google Drive: organised as  <tool folder> / <project number - name> / Project file | <date> / Reports, Source files ---------- */
+const DR = { tok: null, exp: 0, ids: {}, last: 0, lastOk: 0, err: '', checked: null, up: new Set(), ready() { return !!this.tok && Date.now() < this.exp - 60000; }, reset() { this.ids = {}; this.up = new Set(); this.checked = null; this.rootName = ''; } };
+const svNo = () => String(S.cfg.projectNo || '').trim();
+const drClean = t => String(t).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+const drProjName = () => drClean(svNo() ? svNo() + ' - ' + svName() : svName());
+const drToday = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const drScope = () => SV.get().driveFolderId ? 'https://www.googleapis.com/auth/drive' : 'https://www.googleapis.com/auth/drive.file';
 const drLoadGsi = () => window.google && google.accounts && google.accounts.oauth2 ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.onload = res; s.onerror = () => rej(new Error('Could not load Google sign-in (offline?)')); document.head.appendChild(s); });
 async function drConnect() {
   const c = SV.get(); if (!c.clientId) throw new Error('Enter the Google client ID in Setup → Saved projects first.'); if (!/^https?:/.test(location.protocol)) throw new Error('Google sign-in works only on your site address, not on a saved file.');
   await drLoadGsi();
-  return new Promise((res, rej) => { const tc = google.accounts.oauth2.initTokenClient({ client_id: c.clientId, scope: 'https://www.googleapis.com/auth/drive.file', callback: r => { if (r.error) rej(new Error(r.error_description || r.error)); else { DR.tok = r.access_token; DR.exp = Date.now() + (+r.expires_in || 3600) * 1000; DR.err = ''; res(); } }, error_callback: e => rej(new Error(e && e.type || 'Google sign-in was closed')) }); tc.requestAccessToken({ prompt: DR.tok ? '' : 'consent' }); });
+  return new Promise((res, rej) => { const tc = google.accounts.oauth2.initTokenClient({ client_id: c.clientId, scope: drScope(), callback: r => { if (r.error) rej(new Error(r.error_description || r.error)); else { DR.tok = r.access_token; DR.exp = Date.now() + (+r.expires_in || 3600) * 1000; DR.err = ''; SV.set({ lastConn: Date.now() }); res(); } }, error_callback: e => rej(new Error(e && e.type || 'Google sign-in was closed')) }); tc.requestAccessToken({ prompt: SV.get().lastConn ? '' : 'consent' }); });
 }
-async function drApi(path, opt) { const r = await fetch('https://www.googleapis.com' + path, Object.assign({}, opt, { headers: Object.assign({ Authorization: 'Bearer ' + DR.tok }, opt && opt.headers) })); if (r.status === 401) { DR.tok = null; throw new Error('Google Drive sign-in expired: press Reconnect.'); } if (!r.ok) throw new Error('Google Drive error ' + r.status); return r; }
-async function drFolder() {
-  if (DR.folder) return DR.folder; const q = encodeURIComponent("name='Baseline Review Tool' and mimeType='application/vnd.google-apps.folder' and trashed=false");
-  let j = await (await drApi('/drive/v3/files?q=' + q + '&fields=files(id)')).json(); if (j.files && j.files[0]) return DR.folder = j.files[0].id;
-  j = await (await drApi('/drive/v3/files', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Baseline Review Tool', mimeType: 'application/vnd.google-apps.folder' }) })).json(); return DR.folder = j.id;
+async function drApi(path, opt) { const r = await fetch('https://www.googleapis.com' + path, Object.assign({}, opt, { headers: Object.assign({ Authorization: 'Bearer ' + DR.tok }, opt && opt.headers) })); if (r.status === 401) { DR.tok = null; throw new Error('Google Drive sign-in expired: press Reconnect.'); } if (r.status === 404) throw new Error('Google Drive: folder or file not found (404). If you set your own folder, check its link and that you connected with full Drive access.'); if (!r.ok) throw new Error('Google Drive error ' + r.status); return r; }
+const drQ = t => String(t).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+async function drChild(parent, name) {
+  const key = parent + '/' + name; if (DR.ids[key]) return DR.ids[key];
+  const q = encodeURIComponent("name='" + drQ(name) + "' and '" + parent + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"), j = await (await drApi('/drive/v3/files?q=' + q + '&fields=files(id)')).json();
+  if (j.files && j.files[0]) return DR.ids[key] = j.files[0].id;
+  const n = await (await drApi('/drive/v3/files', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parent] }) })).json(); return DR.ids[key] = n.id;
+}
+async function drRoot() {
+  const c = SV.get(); if (DR.ids.root) return DR.ids.root;
+  if (c.driveFolderId) { const j = await (await drApi('/drive/v3/files/' + c.driveFolderId + '?fields=id,name,mimeType')).json(); if (j.mimeType !== 'application/vnd.google-apps.folder') throw new Error('The folder link points to a file, not a folder.'); DR.rootName = j.name; return DR.ids.root = j.id; }
+  const nm = drClean(c.driveRoot || 'Baseline Review Tool'), q = encodeURIComponent("name='" + drQ(nm) + "' and mimeType='application/vnd.google-apps.folder' and trashed=false and 'root' in parents");
+  let j = await (await drApi('/drive/v3/files?q=' + q + '&fields=files(id)')).json(); DR.rootName = nm; if (j.files && j.files[0]) return DR.ids.root = j.files[0].id;
+  j = await (await drApi('/drive/v3/files', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: nm, mimeType: 'application/vnd.google-apps.folder' }) })).json(); return DR.ids.root = j.id;
+}
+async function drPath(parts) { let id = await drRoot(); for (const p of parts) id = await drChild(id, p); return id; }
+async function drPut(parent, name, blob) {
+  const q = encodeURIComponent("name='" + drQ(name) + "' and '" + parent + "' in parents and trashed=false"), ex = ((await (await drApi('/drive/v3/files?q=' + q + '&fields=files(id)')).json()).files || [])[0];
+  const meta = ex ? {} : { name, parents: [parent] }, body = new Blob(['--brt\r\nContent-Type: application/json\r\n\r\n' + JSON.stringify(meta) + '\r\n--brt\r\nContent-Type: ' + (blob.type || 'application/octet-stream') + '\r\n\r\n', blob, '\r\n--brt--']);
+  await drApi('/upload/drive/v3/files' + (ex ? '/' + ex.id : '') + '?uploadType=multipart', { method: ex ? 'PATCH' : 'POST', headers: { 'content-type': 'multipart/related; boundary=brt' }, body });
 }
 async function drSave() {
-  const rec = await svBuild('b64'), blob = await gzipStr(JSON.stringify(rec)), folder = await drFolder(), nm = 'BRT_' + rec.id + '.brtp';
-  const q = encodeURIComponent("name='" + nm + "' and '" + folder + "' in parents and trashed=false"), ex = (await (await drApi('/drive/v3/files?q=' + q + '&fields=files(id)')).json()).files || [];
-  const meta = ex[0] ? {} : { name: nm, parents: [folder] }, body = new Blob(['--brt\r\nContent-Type: application/json\r\n\r\n' + JSON.stringify(meta) + '\r\n--brt\r\nContent-Type: application/octet-stream\r\n\r\n', blob, '\r\n--brt--']);
-  await drApi('/upload/drive/v3/files' + (ex[0] ? '/' + ex[0].id : '') + '?uploadType=multipart', { method: ex[0] ? 'PATCH' : 'POST', headers: { 'content-type': 'multipart/related; boundary=brt' }, body });
+  const rec = await svBuild('b64'), blob = await gzipStr(JSON.stringify(rec)), c = SV.get(), pj = drProjName();
+  await drPut(await drPath([pj, 'Project file']), 'BRT_' + rec.id + '.brtp', new Blob([blob], { type: 'application/gzip' }));
+  if (c.driveFiles !== false) { const files = []; if (S.rp && S.rp.A && S.rp.A.file) files.push(S.rp.A.file); if (S.rp && S.rp.B && S.rp.B.file) files.push(S.rp.B.file); if (S.orig && S.orig.xer) files.push(S.orig.xer);
+    for (const f of files) { const k = pj + '|' + drToday() + '|' + f.name; if (DR.up.has(k)) continue; await drPut(await drPath([pj, drToday(), 'Source files']), f.name, f); DR.up.add(k); } }
+  DR.lastOk = Date.now(); DR.err = '';
 }
-async function drList() { const folder = await drFolder(), q = encodeURIComponent("'" + folder + "' in parents and trashed=false"); return ((await (await drApi('/drive/v3/files?q=' + q + '&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc')).json()).files || []).filter(f => /\.brtp$/.test(f.name)); }
+async function drOutput(blob, name) {
+  const c = SV.get(); if (!c.drive || c.driveOutputs === false) return;
+  if (!DR.ready()) { toast('Google Drive is not connected: this file was not copied to Drive.', 'warn'); return; }
+  try { await drPut(await drPath([drProjName(), drToday(), 'Reports']), name, blob); DR.lastOk = Date.now(); toast('Also saved to Google Drive: ' + drProjName() + ' / ' + drToday() + ' / Reports', 'ok'); } catch (e) { DR.err = e.message; toast(e.message, 'bad'); }
+}
+const _dlOrig = download; download = function (blob, name) { _dlOrig(blob, name); if (!/\.brtp$/.test(String(name))) drOutput(blob, name); };
+async function drList() { const q = encodeURIComponent("name contains 'BRT_' and trashed=false"); return ((await (await drApi('/drive/v3/files?q=' + q + '&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc')).json()).files || []).filter(f => /^BRT_.*\.brtp$/.test(f.name)); }
 async function drOpen(id) { const b = await (await drApi('/drive/v3/files/' + id + '?alt=media')).blob(); const rec = await readBundle(new File([b], 'x.brtp')); if (!rec || rec.tool !== 'baseline-review-tool-session') throw new Error('Not a project saved by this tool'); await svRestore(rec); }
+/* status: connected? can it save? can it load? where? */
+function drStatus() {
+  const c = SV.get(), web = /^https?:/.test(location.protocol), ok = DR.ready(), why = !c.drive ? 'Google Drive is switched off (Setup → Saved projects).' : !c.clientId ? 'Add the Google client ID in Setup.' : !web ? 'Open the site address, not the saved file.' : !ok ? (c.lastConn ? 'Sign-in expired: press Reconnect.' : 'Press Connect.') : '';
+  const root = c.driveFolderId ? (DR.rootName ? DR.rootName + ' (your folder)' : 'your folder (link set)') : drClean(c.driveRoot || 'Baseline Review Tool'), can = c.drive && !!c.clientId && web && ok;
+  return { c, web, ok, can, why, conn: !c.drive ? 'Off' : ok ? 'Connected' : c.lastConn ? 'Sign-in expired' : 'Not connected', path: root + ' / ' + (drProjName() || '…') + ' / ' + drToday() };
+}
+function drStatusHtml(full) {
+  const st = drStatus(), dot = (g, t) => `<span class="drdot ${g ? 'g' : 'r'}"></span>${t}`;
+  return `<div class="drst"><div class="drgrid">
+  <div><small>Connection</small><b>${dot(st.ok, st.conn)}</b></div>
+  <div><small>Saving</small><b>${dot(st.can, st.can ? 'Available' : 'Not available')}</b></div>
+  <div><small>Loading</small><b>${dot(st.can, st.can ? 'Available' : 'Not available')}</b></div>
+  <div><small>Saves to</small><b class="drpath">${esc(st.path)}</b></div>
+  <div><small>Last saved</small><b>${DR.lastOk ? esc(svDate(DR.lastOk)) : '–'}</b></div></div>
+  ${st.why ? `<p class="hint" style="margin:8px 0 0">${esc(st.why)}</p>` : ''}${DR.err ? `<p class="hint" style="margin:6px 0 0;color:#C0392B">${esc(DR.err)}</p>` : ''}
+  ${!svNo() ? `<p class="hint" style="margin:6px 0 0">No project number yet: the folder is named after the project name only. Add it below or in Project setup.</p>` : ''}
+  <div class="actions" style="margin-top:8px;flex-wrap:wrap;gap:8px">${st.c.drive ? `<button class="btn ${st.ok ? '' : 'primary'}" data-sv-act="connect">${st.ok ? 'Reconnect' : (st.c.lastConn ? 'Reconnect' : 'Connect') + ' Google Drive'}</button><button class="btn" data-sv-act="check" ${st.ok ? '' : 'disabled'}>Check the folder</button><button class="btn" data-sv-act="drive-now" ${st.can ? '' : 'disabled'}>Save this project to Drive now</button>${st.ok ? '<button class="btn" data-sv-act="disconnect">Disconnect</button>' : ''}` : '<button class="btn primary" data-go="setup">Set up Google Drive</button>'}</div>
+  ${full ? `<label class="f" style="max-width:340px;margin-top:10px"><span>Project number (names the Drive folder)</span><input type="text" data-sv-no="1" value="${esc(svNo())}" placeholder="e.g. P0076"></label>` : ''}</div>`;
+}
+function drChip() { const el = $('#tb-drive'); if (!el) return; const st = drStatus(); el.className = 'tbchip tbdrive' + (st.ok ? ' on' : ''); el.style.display = st.c.drive ? '' : 'none'; el.innerHTML = `<span class="drdot ${st.ok ? 'g' : 'r'}"></span>Drive`; el.title = 'Google Drive: ' + st.conn + (st.why ? '. ' + st.why : ''); }
+function drRefresh() { drChip(); if (S.step === 'home') { const b = $('#hm-drive'); if (b) b.innerHTML = drStatusHtml(false); hmFill(); } else if (S.step === 'setup') viewSetup(); }
 /* ---------- project file ---------- */
 async function svExportFile() { const rec = await svBuild('b64'); const blob = await gzipStr(JSON.stringify(rec)); download(blob, svName().replace(/[^\w.-]+/g, '_') + '_project.brtp'); toast('Project file saved (' + (blob.size / 1048576).toFixed(1) + ' MB)', 'ok'); }
 async function svOpenFile(file) { try { const b = await readBundle(file); if (b && b.tool === 'baseline-review-tool-session') await svRestore(b); else if (b && b.tool === 'baseline-review-tool-bundle') await importBundle(file); else throw new Error('This is not a project file from this tool.'); } catch (e) { toast(e.message, 'bad'); } }
@@ -67,7 +115,8 @@ async function svOpenFile(file) { try { const b = await readBundle(file); if (b 
 const HM_CARDS = [['t1', '☰', 'Review a baseline', 'Check logic, durations, calendars and contract dates of a baseline programme.', [['XER only', 'quick'], ['With documents', 'setup']]], ['t2', '⇄', 'Check an update', 'See what moved since the baseline or the last update, and why.', [['Open', 'compare']]], ['t3', '🛟', 'Find the delay and recover it', 'Delay train, delay causes and recovery levers with what-if recalculation.', [['Open', 'recovery']]], ['t4', '🏗', 'Build a baseline', 'Turn a BOQ and contract documents into a draft baseline programme.', [['Start from BOQ', 'builder']]], ['t5', '⚖', 'Review a claim', 'Test a contractor claim against the schedules and the contract.', [['Open', 'claims']]], ['t6', '▤', 'Triage many projects', 'Rank a batch of XER files by schedule quality in one pass.', [['Open', 'portfolio']]]];
 function viewHome() {
   $('#main').innerHTML = `<header class="ph"><h1>What do you want to do?</h1><p>Pick a goal, or drop your XER files and the tool suggests what to do. Nothing is uploaded: files are read in your browser.</p></header>
-  <section class="card" id="hm-contsec"><h2>Continue</h2><div id="hm-cont"><p class="hint">Looking for saved projects…</p></div><div class="actions" style="flex-wrap:wrap;gap:8px"><button class="btn" data-sv-act="export">Save project file</button><label class="btn" for="hm-open">Open project file</label><input type="file" id="hm-open" accept=".brtp,.brt" hidden><button class="btn" data-sv-act="drive-now" id="hm-dnow" style="display:none">Sync to Google Drive now</button></div></section>
+  <section class="card" id="hm-contsec"><h2>Continue</h2><div id="hm-cont"><p class="hint">Looking for saved projects…</p></div><div class="actions" style="flex-wrap:wrap;gap:8px"><button class="btn" data-sv-act="export">Save project file</button><label class="btn" for="hm-open">Open project file</label><input type="file" id="hm-open" accept=".brtp,.brt" hidden></div></section>
+  <section class="card"><h2>Google Drive <small>status</small></h2><div id="hm-drive">${drStatusHtml(false)}</div></section>
   <div class="hm-grid">${HM_CARDS.map(([c, ic, t, d, ln]) => `<div class="hm-card ${c}"><div class="ic">${ic}</div><b>${t}</b><span>${d}</span><div class="hm-go">${ln.map(([l, k]) => `<button class="btn ${ln.length > 1 && k === 'setup' ? '' : 'primary'} sm" data-go="${k}">${l} →</button>`).join('')}</div></div>`).join('')}</div>
   <section class="card hm-drop"><h2>Or drop your files here</h2>${drop('hm-files', '.xer,.txt', true, 'Drop one or more XER files')}<div id="hm-found"></div></section>
   <div id="hm-hist"></div>`;
@@ -76,13 +125,13 @@ function viewHome() {
 async function hmFill() {
   const el = $('#hm-cont'); if (!el) return; let loc = []; try { loc = window.indexedDB ? (await idb.all()).sort((a, b) => b.updated - a.updated) : []; } catch (e) { }
   const c = SV.get(); let dr = [], drMsg = '';
-  if (c.drive) { if (DR.ready()) { try { dr = await drList(); } catch (e) { drMsg = e.message; } } else drMsg = 'Google Drive is not connected in this browser.'; }
+  if (c.drive && DR.ready()) { try { dr = await drList(); } catch (e) { drMsg = e.message; } }
   const have = new Set(loc.map(r => r.id)), driveOnly = dr.filter(f => !have.has(f.name.replace(/^BRT_|\.brtp$/g, '')));
   const row = r => `<div class="hm-row"><div><b>${esc(r.name)}</b><small>${r.rp ? esc(dtr(r.rp.A.name, 28)) + ' → ' + esc(dtr(r.rp.B.name, 28)) : 'settings and decisions'} · ${esc(svDate(r.updated))}${r.rp && r.rp.files ? ' · files saved' : ''}</small></div><span class="hm-b">this browser</span><button class="btn sm primary" data-sv-open="${esc(r.id)}">Open</button><button class="btn sm" data-sv-del="${esc(r.id)}" title="Delete from this browser">✕</button></div>`;
   const drow = f => `<div class="hm-row"><div><b>${esc(f.name.replace(/^BRT_|\.brtp$/g, ''))}</b><small>Google Drive · ${esc(svDate(f.modifiedTime))}</small></div><span class="hm-b dr">Drive</span><button class="btn sm primary" data-sv-drive="${esc(f.id)}">Open</button></div>`;
   el.innerHTML = (loc.map(row).join('') + driveOnly.map(drow).join('')) || `<p class="hint">Nothing saved yet. Projects are saved automatically in this browser once you load files${c.auto ? '' : ' (auto-save is off in Setup → Saved projects)'}.</p>`;
-  if (c.drive) el.innerHTML += `<p class="hint" style="margin:8px 0 0">${drMsg ? esc(drMsg) + ' ' : 'Google Drive connected. '}${DR.ready() ? '' : '<button class="btn sm" data-sv-act="connect">Connect / reconnect Google Drive</button>'}</p>`;
-  const nb = $('#hm-dnow'); if (nb) nb.style.display = c.drive && DR.ready() ? '' : 'none';
+  if (drMsg) el.innerHTML += `<p class="hint" style="color:#C0392B">${esc(drMsg)}</p>`;
+  
   const last = loc.find(r => r.history && r.history.length); const hh = $('#hm-hist');
   if (hh && last) { const H = last.history, mx = Math.max(1, ...H.map(x => Math.abs(x.slip || 0)));
     hh.innerHTML = `<section class="card"><h2>Updates analysed – ${esc(last.name)} <small>${H.length > 1 ? 'is the delay shrinking?' : 'load more updates to see the trend'}</small></h2><div style="overflow-x:auto"><table class="tbl compact"><thead><tr><th>Update file</th><th>Data date</th><th>Forecast finish</th><th>Days late</th><th>Recovered by levers</th><th></th></tr></thead><tbody>${H.map(x => `<tr><td>${esc(dtr(x.B, 38))}</td><td>${esc(svFd(x.ddB))}</td><td>${esc(svFd(x.fB))}</td><td><b>${x.slip == null ? '–' : (x.slip > 0 ? '+' : '') + x.slip + ' d'}</b></td><td>${x.gain ? '−' + x.gain + ' d (' + x.nOn + ' lever' + (x.nOn === 1 ? '' : 's') + ')' : '–'}</td><td style="width:140px"><span class="hm-bar" style="width:${Math.round(Math.abs(x.slip || 0) / mx * 120)}px"></span></td></tr>`).join('')}</tbody></table></div></section>`; }
@@ -96,7 +145,8 @@ async function hmDrop(files) {
   ${ok.length ? `<h3 class="rp-h3">Suggested next steps</h3><div class="actions" style="flex-wrap:wrap;gap:8px">${ok.length === 1 ? b('quick', 'Quick review of this file', 1) : b('rp', 'Find the delay and recover it (oldest → newest)', 1) + b('cmp', 'Check the update')}${ok.length > 2 ? b('pf', 'Triage all ' + ok.length + ' files') : ''}</div>${ok.length > 1 ? `<p class="hint">The oldest data date (${esc(svFd(ok[0].dd))}) is used as the baseline / previous file and the newest (${esc(svFd(ok[ok.length - 1].dd))}) as the current update.</p>` : ''}` : ''}`;
 }
 document.addEventListener('change', e => { const t = e.target; if (t.id === 'hm-files' && t.files.length) hmDrop([...t.files]); if (t.id === 'hm-open' && t.files.length) svOpenFile(t.files[0]);
-  if (t.matches && t.matches('[data-sv]')) { const k = t.dataset.sv; SV.set({ [k]: t.type === 'checkbox' ? t.checked : t.type === 'number' ? Math.max(1, +t.value || 20) : t.value.trim() }); if (S.step === 'setup') viewSetup(); } });
+  if (t.matches && t.matches('[data-sv]')) { const k = t.dataset.sv; let v = t.type === 'checkbox' ? t.checked : t.type === 'number' ? Math.max(1, +t.value || 20) : t.value.trim(); if (k === 'driveFolderId') { const m = /folders\/([\w-]+)/.exec(v) || /[?&]id=([\w-]+)/.exec(v); v = m ? m[1] : v.replace(/[^\w-]/g, ''); } SV.set({ [k]: v }); if (/^(driveFolderId|driveRoot|clientId|drive)$/.test(k)) { DR.reset(); if (k === 'driveFolderId' || k === 'clientId') { DR.tok = null; SV.set({ lastConn: 0 }); } } drChip(); if (S.step === 'setup') viewSetup(); }
+  if (t.matches && t.matches('[data-sv-no]')) { S.cfg.projectNo = t.value.trim(); DR.ids = {}; autosave(); drRefresh(); } });
 document.addEventListener('click', async e => { const t = e.target.closest && e.target.closest('[data-hm],[data-sv-act],[data-sv-open],[data-sv-del],[data-sv-drive]'); if (!t) return;
   try {
     if (t.dataset.hm) { const ok = S._hm || [], k = t.dataset.hm, first = ok[0], last = ok[ok.length - 1], ent = g => ({ M: g.M, name: g.f.name, file: g.f });
@@ -109,18 +159,26 @@ document.addEventListener('click', async e => { const t = e.target.closest && e.
     if (t.dataset.svDrive) { await drOpen(t.dataset.svDrive); return; }
     const a = t.dataset.svAct;
     if (a === 'export') await svExportFile();
-    if (a === 'connect') { await drConnect(); toast('Google Drive connected', 'ok'); if (S.step === 'home') hmFill(); else viewSetup(); }
-    if (a === 'drive-now') { await drSave(); toast('Saved to Google Drive', 'ok'); hmFill(); }
+    if (a === 'connect') { await drConnect(); toast('Google Drive connected', 'ok'); drRefresh(); sessionSaveSoon(); }
+    if (a === 'check') { const id = await drPath([drProjName()]); DR.err = ''; DR.checked = Date.now(); toast('Folder OK: ' + drStatus().path.split(' / ').slice(0, 2).join(' / '), 'ok'); drRefresh(); }
+    if (a === 'drive-now') { if (!S.cfg.projectName && !(S.rp && S.rp.A)) throw new Error('Nothing to save yet: set a project name or load files first.'); await drSave(); toast('Saved to Google Drive', 'ok'); drRefresh(); }
+    if (a === 'disconnect') { DR.tok = null; DR.reset(); SV.set({ lastConn: 0 }); toast('Google Drive disconnected in this browser', 'ok'); drRefresh(); }
     if (a === 'clear') { if (confirm('Delete ALL saved projects from this browser?')) { for (const r of await idb.all()) await idb.del(r.id); S._svRec = null; toast('Saved projects cleared', 'ok'); } }
-  } catch (err) { console.error(err); toast(err.message, 'bad'); } });
+  } catch (err) { console.error(err); DR.err = err.message; toast(err.message, 'bad'); drRefresh(); } });
 function svCard() {
   const c = SV.get(), file = !/^https?:/.test(location.protocol);
   return `<section class="card"><h2>Saved projects <small>this browser, project file, Google Drive</small></h2>
   <label class="sw"><input type="checkbox" data-sv="auto" ${c.auto ? 'checked' : ''}><span>Save projects automatically in this browser (shown under Continue on the Home screen)</span></label>
   <label class="sw"><input type="checkbox" data-sv="saveXer" ${c.saveXer ? 'checked' : ''}><span>Also keep the XER files, so a project reopens with its files (off = only settings and results; you drop the files again)</span></label>
   <div class="grid g4"><label class="f"><span>Projects to keep</span><input type="number" min="1" data-sv="keep" value="${esc(c.keep)}"></label></div>
-  <label class="sw"><input type="checkbox" data-sv="drive" ${c.drive ? 'checked' : ''}><span>Sync projects to my Google Drive (off by default; folder “Baseline Review Tool”; the tool sees only files it created)</span></label>
-  <div class="aiopts ${c.drive ? '' : 'off'}"><div class="grid"><label class="f"><span>Google client ID (create once in Google Cloud, see the steps given with this version)</span><input type="text" data-sv="clientId" value="${esc(c.clientId)}" placeholder="123456-abc.apps.googleusercontent.com" autocomplete="off"></label></div>
-  <div class="actions"><button class="btn" data-sv-act="connect">${DR.ready() ? 'Reconnect' : 'Connect'} Google Drive</button><span class="hint">${file ? 'Works only on your site address, not on a saved file.' : DR.ready() ? 'Connected for this session.' : 'Not connected in this browser.'}${DR.err ? ' ' + esc(DR.err) : ''}</span></div></div>
+  <label class="sw"><input type="checkbox" data-sv="drive" ${c.drive ? 'checked' : ''}><span>Save my work to Google Drive (off by default)</span></label>
+  <div class="aiopts ${c.drive ? '' : 'off'}">
+  <div id="st-drive">${drStatusHtml(true)}</div>
+  <div class="grid" style="margin-top:10px"><label class="f"><span>Google client ID (create once in Google Cloud)</span><input type="text" data-sv="clientId" value="${esc(c.clientId)}" placeholder="123456-abc.apps.googleusercontent.com" autocomplete="off"></label>
+  <label class="f"><span>Tool folder name in My Drive (created if missing)</span><input type="text" data-sv="driveRoot" value="${esc(c.driveRoot || 'Baseline Review Tool')}"></label>
+  <label class="f"><span>OR the link of a folder you made yourself (optional; needs full Drive access when you connect)</span><input type="text" data-sv="driveFolderId" value="${esc(c.driveFolderId || '')}" placeholder="https://drive.google.com/drive/folders/…" autocomplete="off"></label></div>
+  <label class="sw"><input type="checkbox" data-sv="driveFiles" ${c.driveFiles !== false ? 'checked' : ''}><span>Also save the source XER files, in &lt;project&gt; / &lt;date&gt; / Source files</span></label>
+  <label class="sw"><input type="checkbox" data-sv="driveOutputs" ${c.driveOutputs !== false ? 'checked' : ''}><span>Also copy every Word / Excel file I download, into &lt;project&gt; / &lt;date&gt; / Reports</span></label>
+  <p class="hint">Layout: tool folder / <b>project number - name</b> / Project file (the latest project) · <b>YYYY-MM-DD</b> / Reports and Source files. With the default access the tool sees only what it created. Using your own folder needs full Drive access, which is broader.</p></div>
   <div class="actions" style="margin-top:8px"><button class="btn" data-sv-act="clear">Clear saved projects in this browser</button></div></section>`;
 }

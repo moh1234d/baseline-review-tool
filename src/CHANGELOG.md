@@ -1,3 +1,9 @@
+## v9.2 (2026-11-17)
+- Google Drive status: a Status panel (Home and Setup) and a Drive dot in the top bar show Connection, Saving, Loading, the folder path the work goes to, the last save and any error; buttons Connect / Reconnect, Check the folder, Save this project to Drive now, Disconnect.
+- Organised folders: tool folder / <project number - name> / Project file (latest project) and <YYYY-MM-DD> / Reports and Source files. New field Project number (Setup and the Drive panel).
+- Word / Excel files you download are also copied to Drive (Reports); the source XER files are copied to Source files (both can be switched off).
+- Your own folder: paste the link of a folder you made and the tool writes inside it, creating the project and date subfolders (needs full Drive access, so it is optional; the default access sees only what the tool created).
+
 ## v9.1 (2026-11-16)
 - New Home screen (opens first): six goal cards (review a baseline, check an update, find the delay and recover it, build a baseline, review a claim, triage many projects) and a drop zone. Drop one XER and it offers a quick review; two or more and it offers recovery (oldest file = baseline, newest = current update), update check or triage, with the files already loaded.
 - Saved projects: every project is saved automatically in this browser (settings, decisions, results and, optionally, the XER files). "Continue" on Home reopens it in one click. Save / Open project file (.brtp) moves a project between devices.
