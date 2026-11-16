@@ -20,7 +20,7 @@ function runTrain(k) {
       D.levOn = new Set(best.values()); trainComb(k);
       D.levAll = D.lev.levers.length ? E.trainCombine(Bm, D.lev.levers.filter(l => l.gain > 0), { r0: D.r0 }).gain : 0;
     } catch (e) { console.error(e); D.trainErr = 'Levers could not be tested: ' + e.message; }
-    D.levBusy = false; trRender(k);
+    D.levBusy = false; trRender(k); if (k === 'rp' && typeof sessionSaveSoon === 'function') sessionSaveSoon();
   }, 30);
 }
 function trainComb(k) { const D = trSt(k), ab = trAB(k); if (!D.lev || !ab) return; const Bm = ab[1]; const on = [...D.levOn].sort((a, b) => D.lev.levers[a].car - D.lev.levers[b].car || D.lev.levers[b].gain - D.lev.levers[a].gain).map(i => D.lev.levers[i]); D.r0 = D.r0 || E.recalc(Bm, {}); D.comb = E.trainCombine(Bm, on, { r0: D.r0 }); if (k === 'rp') D.seq = E.trainSequence(Bm, on, { r0: D.r0 }); }

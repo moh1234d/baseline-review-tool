@@ -7,6 +7,7 @@ const STEPS = [['setup', 'Project setup'], ['files', 'Load files'], ['confirm', 
 const durationDays = () => { const c = S.cfg; if (!c.durationValue) return null; return c.durationUnit === 'months' ? Math.round(c.durationValue * 30.4375) : +c.durationValue; };
 
 const NAV_GROUPS = [
+  ['Start', [['home', '⌂', 'Home']]],
   ['Review', [['portfolio', '☰', 'Portfolio triage'], ['quick', '⚡', 'Quick review · XER only']], 'full'],
   ['Compare and analyse', [['compare', '⇄', 'Schedule comparison'], ['delay', '⏱', 'Delay analysis'], ['recovery', '🛟', 'Recovery planner'], ['claims', '⚖', 'Claim review']]],
   ['Build and verify', [['builder', '🏗', 'Baseline builder'], ['roundtrip', '↔', 'P6 roundtrip check']]],
@@ -24,7 +25,7 @@ function renderNav() {
   const ai = !!(S.cfg.ai && (S.step === 'recovery' ? S.cfg.ai.rp === true : S.cfg.ai.cmp === true)), tg = $('#tb-ai'), live = S.step === 'recovery' || S.step === 'compare';
   tg.innerHTML = '<span class="tsw"></span>AI'; tg.className = 'tbchip tbai' + (ai ? ' on' : '') + (live ? '' : ' ro'); tg.setAttribute('aria-checked', String(ai)); tg.title = live ? 'Claude AI for this page: ' + (ai ? 'on' : 'off') + ' (click to switch)' : 'AI switch is on the Schedule comparison and Recovery planner pages';
 }
-function go(step) { S.step = step; $('#main').classList.remove('wide'); renderNav(); const f = { setup: viewSetup, files: viewFiles, confirm: viewConfirm, run: viewRun, report: viewReport, quick: viewQuick, portfolio: viewPortfolio, compare: viewCompare, delay: viewDelay, builder: viewBuilder, claims: viewClaims, roundtrip: viewRoundtrip, assess: viewAssess, recovery: viewRecovery }[step]; $('#main').scrollTop = 0; window.scrollTo(0, 0); f(); }
+function go(step) { S.step = step; $('#main').classList.remove('wide'); renderNav(); const f = { home: viewHome, setup: viewSetup, files: viewFiles, confirm: viewConfirm, run: viewRun, report: viewReport, quick: viewQuick, portfolio: viewPortfolio, compare: viewCompare, delay: viewDelay, builder: viewBuilder, claims: viewClaims, roundtrip: viewRoundtrip, assess: viewAssess, recovery: viewRecovery }[step]; $('#main').scrollTop = 0; window.scrollTo(0, 0); f(); }
 
 /* ---------------- 1. SETUP ---------------- */
 function viewSetup() {
@@ -64,6 +65,7 @@ function viewSetup() {
   <section class="card"><h2>Working week by category</h2><p class="hint">Days per week the calendar must have. Categories come from the WBS (Confirmations).</p><div class="grid g4">
     ${['construction', 'engineering', 'mobilization', 'closeout', 'general', 'procurement', 'delivery', 'approval'].map(k => `<label class="f"><span>${({ approval: (esc(S.cfg.approverLabel || 'KEC / authority') + ' approvals (Fri &amp; Sat off)'), delivery: 'Material delivery', closeout: 'Close-out / handover', general: 'General' })[k] || k[0].toUpperCase() + k.slice(1)}</span><select data-p="calRules.${k}" data-t="int">${[5, 6, 7].map(n => `<option ${c.calRules[k] === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`).join('')}
   </div></section>
+  ${svCard()}
   <section class="card"><h2>AI assistance <small>optional – never decides pass / fail</small></h2>
     <label class="sw"><input type="checkbox" data-p="ai.on" data-t="bool" ${c.ai.on ? 'checked' : ''}><span>Use Claude for this project</span></label>
     <div class="aiopts ${c.ai.on ? '' : 'off'}"><div class="grid">${fld('Claude API key (kept only while this page is open unless you tick Remember)', 'ai.key', 'password', 'autocomplete="off"')}</div>

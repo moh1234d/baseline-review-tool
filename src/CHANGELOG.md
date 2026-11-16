@@ -1,3 +1,10 @@
+## v9.1 (2026-11-16)
+- New Home screen (opens first): six goal cards (review a baseline, check an update, find the delay and recover it, build a baseline, review a claim, triage many projects) and a drop zone. Drop one XER and it offers a quick review; two or more and it offers recovery (oldest file = baseline, newest = current update), update check or triage, with the files already loaded.
+- Saved projects: every project is saved automatically in this browser (settings, decisions, results and, optionally, the XER files). "Continue" on Home reopens it in one click. Save / Open project file (.brtp) moves a project between devices.
+- Google Drive sync (optional, off by default): folder "Baseline Review Tool", only files the tool created are visible; needs your own Google client ID (Setup → Saved projects).
+- Update history per project: each pair of files analysed in the Recovery planner adds a line (data date, forecast finish, days late, days recovered), shown on Home.
+- Setup has a new "Saved projects" card: auto-save, keep the XER files, projects to keep, Google Drive, clear.
+
 ## v9.0 (2026-11-16)
 - Claude server proxy: the Worker can hold the Anthropic key as the secret ANTHROPIC_API_KEY. The tool detects it (/api/claude-status) and then needs no key in the browser; the Setup → AI switch "Use the server proxy" turns it off. The proxy sits behind the password gate, accepts only Claude models, caps the output length (8000 tokens, or AI_MAX_TOKENS) and can limit models (AI_MODELS). Without the secret the tool works as before with your own key.
 

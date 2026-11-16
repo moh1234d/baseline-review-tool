@@ -74,4 +74,4 @@ function bindAll() {
   ['dragover', 'dragenter'].forEach(ev => document.addEventListener(ev, e => { const d = e.target.closest('.drop'); if (d) { e.preventDefault(); d.classList.add('over'); } }));
   ['dragleave', 'drop'].forEach(ev => document.addEventListener(ev, e => { const d = e.target.closest('.drop'); if (d) { d.classList.remove('over'); if (ev === 'drop') { e.preventDefault(); const inp = d.querySelector('input'); if (e.dataTransfer.files.length) onFile(inp.id, e.dataTransfer.files); } } }));
 }
-window.addEventListener('DOMContentLoaded', () => { bindAll(); go('setup'); });
+window.addEventListener('DOMContentLoaded', () => { bindAll(); go('home'); });
