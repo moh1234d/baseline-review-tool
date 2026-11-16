@@ -1,3 +1,13 @@
+## v8.6 (2026-11-16)
+- Recovery planner views cleaned up and quality-checked: all box text is measured and wrapped (up to 3 lines) so nothing runs outside its box; the finish box no longer overlaps its date; in B · Parallel plots the lanes now run along one bus into the finish, so no arrow crosses another box or text. An automatic check (text vs text, text vs box, text outside its box or the chart, arrows through boxes or over text) ran clean on views A, B and D for paths 1 to 3, with the default levers and with every lever on.
+
+## v8.5 (2026-11-16)
+- Recovery planner, B · Parallel plots now shows where the paths interfere: the activities that paths 1 to 3 share are drawn once (blue box, with the junction activity), the lanes split from it, and all lanes meet again at the finish with the real link type. A short table under the chart states what is shared, where the paths split and how they meet again.
+- Paths 2 and 3 are now traced exactly as in Delay analysis (they stop at the activity they share with a higher path) in all four views, so the origin, cars and levers of those paths start from the shared junction and carry its slip.
+
+## v8.4 (2026-11-16)
+- Recovery planner: the delay train can be shown in four switchable views (buttons above the train; the choice is remembered): Cards (as before), A · Network (boxes with the real driving links, type and lag; links changed by a switched-on lever are dashed green), B · Parallel plots (paths 1 to 3 side by side, shared start drawn once, "twin copy" marks where a lever also applies), D · Logic Gantt (baseline, current and with-levers bars on a date axis with the finish markers). All views follow the selected path and the lever switches.
+
 ## v8.3 (2026-11-16)
 - Recovery planner: a "Path" drop-down at the top selects Path 1 (longest), Path 2 or Path 3 to the finish, each shown with its end activity, float and finish. The train, timeline, waterfall, levers, report and Excel table follow the selected path. Levers apply to identical copies as before.
 

@@ -9,9 +9,9 @@ function runTrain(k) {
   const ab = trAB(k); if (!ab) return; const Bm = ab[1];
   let tcode = k === 'cmp' ? ((E.dlTargets(Bm)[0] || {}).code) : D.target;
   /* v8.3: Recovery planner — paths 1 to 3 to the finish; the selected one is analysed */
-  if (k === 'rp') { const R = S.rp; if (!R.paths || R.pathsFor !== Bm) { R.paths = []; try { const t0 = E.dlTargets(Bm)[0]; if (t0) R.paths = E.dlPaths(Bm, t0, 3).map(p => ({ rank: p.rank, code: p.end.code, name: p.end.name, tf: p.tf, ef: p.end.ef })); } catch (e) { console.error(e); } R.pathsFor = Bm; if (!(R.pathIdx < R.paths.length)) R.pathIdx = 0; }
+  if (k === 'rp') { const R = S.rp; if (!R.paths || R.pathsFor !== Bm) { R.paths = []; try { const t0 = E.dlTargets(Bm)[0]; if (t0) R.paths = E.dlPaths(Bm, t0, 3).map(p => ({ rank: p.rank, code: p.end.code, name: p.end.name, tf: p.tf, ef: p.end.ef, chain: p.chain, joins: p.joins || null })); } catch (e) { console.error(e); } R.pathsFor = Bm; if (!(R.pathIdx < R.paths.length)) R.pathIdx = 0; }
     tcode = (R.paths[R.pathIdx || 0] || {}).code; }
-  try { D.train = E.delayTrain(ab[0], Bm, { targetCode: tcode, cfg: trCfg() }); } catch (e) { console.error(e); D.trainErr = e.message; return; }
+  try { const pp = k === 'rp' ? (S.rp.paths || [])[S.rp.pathIdx || 0] : null; D.train = E.delayTrain(ab[0], Bm, { targetCode: tcode, cfg: trCfg(), chain: pp && pp.rank > 1 ? pp.chain : null, joins: pp && pp.rank > 1 ? pp.joins : null }); } catch (e) { console.error(e); D.trainErr = e.message; return; }
   D.trainSel = D.train && D.train.origin ? D.train.cars.findIndex(c => c.isOrigin) : 0; D.levBusy = true;
   setTimeout(() => {
     try { const hw = Object.assign({}, E.DELAY_DEFAULTS, S.cfg.delay || {}).holdWords; D.lev = E.trainLevers(Bm, D.train, { holdWords: hw, seqCfg: S.cfg });

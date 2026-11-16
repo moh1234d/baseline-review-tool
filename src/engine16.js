@@ -18,16 +18,17 @@ E.delayTrain = function (A, B, o) {
   /* 1. walk back. Not finished: the driving link (zero gap). Finished or started: the predecessor that released it last, ignoring predecessors
         that finished after this activity had already finished (out-of-sequence progress does not drive). */
   const cons = (l) => { const p = l.from, lag = (l.lagCal || 0); return (l.type === 'SS' || l.type === 'SF' ? p.es : p.ef) + lag; };
-  const chain = [], seen = new Set(); let t = target;
+  /* v8.5: o.chain = a path already traced by the Delay analysis (paths 2 and 3 stop where they join a higher path; o.joins = that shared activity, whose slip is carried in) */
+  const chain = [], seen = new Set(); let t = o.chain && o.chain.length ? null : target;
   while (t && !seen.has(t.id) && chain.length < 3000) {
     seen.add(t.id); chain.push(t); let nx = null;
     if (t.as == null) { let d = []; try { d = E.dlDrivers(B, t) || []; } catch (e) { d = []; } const z = d.filter(x => x.gap != null && x.gap <= 0.01 && !seen.has(x.from.id)).map(x => x.from); if (z.length) nx = z.sort((x, y) => y.ef - x.ef)[0]; }
     if (!nx) { const lim = (t.ef != null ? t.ef : t.es != null ? t.es : Infinity) + 1; const c = t.pre.filter(l => !seen.has(l.from.id) && l.from.ef != null && cons(l) <= lim).sort((x, y) => cons(y) - cons(x)); nx = c.length ? c[0].from : null; }
     t = nx;
   }
-  chain.reverse();
+  if (o.chain && o.chain.length) chain.push(...o.chain); else chain.reverse();
   /* 2. slip per activity and the delay each one added */
-  let prev = 0; const rows = chain.map(t => { const a = aBy.get(t.code), slip = a && a.ef != null && t.ef != null ? Math.round(t.ef - a.ef) : null, s = slip == null ? prev : slip, own = s - prev; prev = s;
+  let prev = 0; if (o.joins) { const ja = aBy.get(o.joins.code); if (ja && ja.ef != null && o.joins.ef != null) prev = Math.round(o.joins.ef - ja.ef); } const rows = chain.map(t => { const a = aBy.get(t.code), slip = a && a.ef != null && t.ef != null ? Math.round(t.ef - a.ef) : null, s = slip == null ? prev : slip, own = s - prev; prev = s;
     return { t, a, code: t.code, name: t.name, status: t.status, slip: s, isNew: !a, own, pDur: a && a.ef != null && a.es != null ? Math.round(a.ef - a.es) : null, cDur: t.ef != null && t.es != null ? Math.round(t.ef - t.es) : null }; });
   const oi = rows.findIndex(r => r.own >= cfg.originMin);
   let st = 0; if (oi > 0) { for (let i = oi - 1; i >= 0; i--) if (Math.abs(rows[i].slip) <= 1) { st = i; break; } }
