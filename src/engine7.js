@@ -50,8 +50,8 @@ E.DL_CAUSES = { LATE: 'Late start / waiting', DUR: 'Duration growth', LOGIC: 'Lo
         tr.chain.forEach(t => used.add(t.id)); paths.push(Object.assign({ rank: paths.length + 1, end: c, tf: k }, tr));
       }
     }
-    paths[0].tf = Math.min(...paths[0].chain.filter(t => !done(t) && t.tfWd != null).map(t => t.tfWd), 0);
-    if (!isFinite(paths[0].tf)) paths[0].tf = 0;
+    /* v8.2.1: report each path's true lowest float (the half-day grouping above is only for choosing candidates, not for display) */
+    paths.forEach((p, i) => { const v = p.chain.filter(t => !done(t) && t.tfWd != null).map(t => t.tfWd); const m = v.length ? Math.min(...v) : (i ? p.tf : 0); p.tf = i === 0 ? Math.min(m, 0) : m; if (!isFinite(p.tf)) p.tf = 0; });
     return paths;
   };
 

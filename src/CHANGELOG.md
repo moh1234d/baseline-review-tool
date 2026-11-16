@@ -1,3 +1,6 @@
+## v8.2.1 (2026-11-16)
+- Fixed: the float shown for the 2nd and 3rd critical paths (Delay analysis, network diagrams) was the half-day group used to find them, not the path's real float (−30.6 wd showed as −30.5). Each path now shows its true lowest total float.
+
 ## v8.2 (2026-11-16)
 Recovery levers now respect construction logic.
 - An overlap is offered only when the link is not a physical constraint and the work can really overlap. Every finish-to-start link inside a stage is checked:
