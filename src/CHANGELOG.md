@@ -1,3 +1,6 @@
+## v8.3 (2026-11-16)
+- Recovery planner: a "Path" drop-down at the top selects Path 1 (longest), Path 2 or Path 3 to the finish, each shown with its end activity, float and finish. The train, timeline, waterfall, levers, report and Excel table follow the selected path. Levers apply to identical copies as before.
+
 ## v8.2.1 (2026-11-16)
 - Fixed: the float shown for the 2nd and 3rd critical paths (Delay analysis, network diagrams) was the half-day group used to find them, not the path's real float (−30.6 wd showed as −30.5). Each path now shows its true lowest total float.
 

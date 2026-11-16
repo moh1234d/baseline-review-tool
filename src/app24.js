@@ -5,9 +5,12 @@ const trSt = k => k === 'cmp' ? (S.cmp.tr = S.cmp.tr || {}) : k === 'rp' ? ((S.r
 const trAB = k => { if (k === 'rp') return S.rp && S.rp.A && S.rp.B ? [S.rp.A.M, S.rp.B.M] : null; if (k === 'cmp') return S.cmp.A && S.cmp.B ? [S.cmp.A.M, S.cmp.B.M] : null; const D = S.dl; if (!D.base || !D.ups.length) return null; return [D.base.M, D.mode === 'A' ? (D.upUsed || D.ups[D.ups.length - 1]).M : dlModels().slice(-1)[0].M]; };
 const trRender = k => { const y = window.scrollY; if (k === 'rp') { if (S.step === 'recovery') viewRecovery(); } else if (k === 'cmp') { if (S.step === 'compare') viewCompare(); } else if (S.step === 'delay') viewDelay(); window.scrollTo(0, y); };
 function runTrain(k) {
-  k = k || 'dl'; const D = trSt(k); D.train = null; D.lev = null; D.comb = null; D.trainErr = null; D.r0 = null; D.seq = null;
+  k = k || 'dl'; const D = trSt(k); D.train = null; D.lev = null; D.comb = null; D.trainErr = null; D.r0 = null; D.seq = null; D.levOn = new Set();
   const ab = trAB(k); if (!ab) return; const Bm = ab[1];
-  const tcode = k === 'cmp' ? ((E.dlTargets(Bm)[0] || {}).code) : D.target;
+  let tcode = k === 'cmp' ? ((E.dlTargets(Bm)[0] || {}).code) : D.target;
+  /* v8.3: Recovery planner — paths 1 to 3 to the finish; the selected one is analysed */
+  if (k === 'rp') { const R = S.rp; if (!R.paths || R.pathsFor !== Bm) { R.paths = []; try { const t0 = E.dlTargets(Bm)[0]; if (t0) R.paths = E.dlPaths(Bm, t0, 3).map(p => ({ rank: p.rank, code: p.end.code, name: p.end.name, tf: p.tf, ef: p.end.ef })); } catch (e) { console.error(e); } R.pathsFor = Bm; if (!(R.pathIdx < R.paths.length)) R.pathIdx = 0; }
+    tcode = (R.paths[R.pathIdx || 0] || {}).code; }
   try { D.train = E.delayTrain(ab[0], Bm, { targetCode: tcode, cfg: trCfg() }); } catch (e) { console.error(e); D.trainErr = e.message; return; }
   D.trainSel = D.train && D.train.origin ? D.train.cars.findIndex(c => c.isOrigin) : 0; D.levBusy = true;
   setTimeout(() => {
