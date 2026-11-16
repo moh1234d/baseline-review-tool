@@ -1,3 +1,6 @@
+## v9.3 (2026-11-17)
+- Drive project folder name is now a setting (Setup → Saved projects): Project name only (default), Project number - name, or Project number only. When the number and name are the same, or the name already starts with the number, it is shown once.
+
 ## v9.2 (2026-11-17)
 - Google Drive status: a Status panel (Home and Setup) and a Drive dot in the top bar show Connection, Saving, Loading, the folder path the work goes to, the last save and any error; buttons Connect / Reconnect, Check the folder, Save this project to Drive now, Disconnect.
 - Organised folders: tool folder / <project number - name> / Project file (latest project) and <YYYY-MM-DD> / Reports and Source files. New field Project number (Setup and the Drive panel).
