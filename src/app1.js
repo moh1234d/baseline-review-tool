@@ -8,7 +8,7 @@ const LS = { get(k, d) { try { const v = localStorage.getItem(k); return v == nu
 
 const S = { cfg: E.defaultCfg(), M: null, out: null, step: 'setup', files: {}, history: [], commentNo: {}, ui: { filter: 'fail' }, raw: {} };
 S.cfg.eid = LS.get('brt.eid', []);
-(function () { const a = LS.get('brt.ai', null); if (a) { S.cfg.ai.on = !!a.on; S.cfg.ai.cmp = a.cmp === true; S.cfg.ai.remember = !!a.remember; S.cfg.ai.key = a.remember ? (a.key || '') : ''; S.cfg.ai.models = a.models || {}; S.cfg.ai.prices = a.prices; } })();
+(function () { const a = LS.get('brt.ai', null); if (a) { S.cfg.ai.on = !!a.on; S.cfg.ai.cmp = a.cmp === true; S.cfg.ai.rp = a.rp === true; S.cfg.ai.proxy = a.proxy !== false; S.cfg.ai.remember = !!a.remember; S.cfg.ai.key = a.remember ? (a.key || '') : ''; S.cfg.ai.models = a.models || {}; S.cfg.ai.prices = a.prices; } })();
 
 function toast(msg, kind) {
   let t = $('#toast'); t.textContent = msg; t.className = 'show ' + (kind || ''); clearTimeout(toast._t); toast._t = setTimeout(() => t.className = '', 4200);
@@ -107,17 +107,20 @@ const PRICE_DEF = { haiku: [1, 5], sonnet: [3, 15], opus: [5, 25], fable: [5, 25
 function modelFor(task) { return (S.cfg.ai.models && S.cfg.ai.models[task]) || AI_TASKS.find(t => t.id === task).def; }
 function priceFor(model) { const p = S.cfg.ai.prices || PRICE_DEF; const k = Object.keys(p).find(k => model.includes(k)); return p[k] || [3, 15]; }
 function estimateCost(task, chars, outTokens) { const m = modelFor(task), p = priceFor(m); return ((chars / 4) * p[0] + (outTokens || 1500) * p[1]) / 1e6; }
-function aiReady() { if (!S.cfg.ai.on) { toast('AI is switched off for this project (Setup → AI).', 'warn'); return false; } if (!S.cfg.ai.key) { toast('Enter your Claude API key in Setup → AI.', 'warn'); return false; } if (!S.cfg.ai.consent) { toast('Tick the consent box in Setup → AI first: it states what is sent to Anthropic.', 'warn'); return false; } return true; }
+function aiReady() { if (!S.cfg.ai.on) { toast('AI is switched off for this project (Setup → AI).', 'warn'); return false; } if (!aiViaProxy() && !S.cfg.ai.key) { toast('Enter your Claude API key in Setup → AI (or set up the server proxy).', 'warn'); return false; } if (!S.cfg.ai.consent) { toast('Tick the consent box in Setup → AI first: it states what is sent to Anthropic.', 'warn'); return false; } return true; }
+/* server proxy: the key stays in the Worker; used when the site offers it and the switch in Setup is on */
+const aiViaProxy = () => S.cfg.ai.proxy !== false && S.aiProxy === true;
+(function () { try { if (/^https?:/.test(location.protocol)) fetch('/api/claude-status', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { S.aiProxy = !!(j && j.proxy); }).catch(() => { }); } catch (e) { } })();
 async function callClaude(task, system, content, maxTokens) {
   if (!aiReady()) throw new Error('AI not available');
   const body = { model: modelFor(task), max_tokens: maxTokens || 2000, system, messages: [{ role: 'user', content }] };
-  const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': S.cfg.ai.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify(body) });
+  const r = aiViaProxy() ? await fetch('/api/claude', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }) : await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': S.cfg.ai.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify(body) });
   if (!r.ok) { let t = ''; try { t = (await r.json()).error.message; } catch (e) { } throw new Error('Claude API ' + r.status + ': ' + t); }
   const j = await r.json(); S.aiUsage = S.aiUsage || { in: 0, out: 0 }; S.aiUsage.in += j.usage.input_tokens; S.aiUsage.out += j.usage.output_tokens;
   return j.content.map(c => c.text || '').join('');
 }
 function parseJson(txt) { const m = /```(?:json)?\s*([\s\S]*?)```/.exec(txt); const s = m ? m[1] : txt; const a = s.indexOf('{'), b = s.lastIndexOf('}'); const a2 = s.indexOf('['), b2 = s.lastIndexOf(']'); try { if (a2 >= 0 && (a < 0 || a2 < a)) return JSON.parse(s.slice(a2, b2 + 1)); return JSON.parse(s.slice(a, b + 1)); } catch (e) { throw new Error('Claude did not return valid JSON'); } }
-function saveAiSettings() { LS.set('brt.ai', { on: S.cfg.ai.on, cmp: S.cfg.ai.cmp === true, remember: !!S.cfg.ai.remember, key: S.cfg.ai.remember ? S.cfg.ai.key : '', models: S.cfg.ai.models, prices: S.cfg.ai.prices }); }
+function saveAiSettings() { LS.set('brt.ai', { on: S.cfg.ai.on, cmp: S.cfg.ai.cmp === true, rp: S.cfg.ai.rp === true, proxy: S.cfg.ai.proxy !== false, remember: !!S.cfg.ai.remember, key: S.cfg.ai.remember ? S.cfg.ai.key : '', models: S.cfg.ai.models, prices: S.cfg.ai.prices }); }
 
 /* ---------- profile (settings & confirmations per project) ---------- */
 function toProfile() {

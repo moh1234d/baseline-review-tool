@@ -1,3 +1,20 @@
+## v9.0 (2026-11-16)
+- Claude server proxy: the Worker can hold the Anthropic key as the secret ANTHROPIC_API_KEY. The tool detects it (/api/claude-status) and then needs no key in the browser; the Setup → AI switch "Use the server proxy" turns it off. The proxy sits behind the password gate, accepts only Claude models, caps the output length (8000 tokens, or AI_MAX_TOKENS) and can limit models (AI_MODELS). Without the secret the tool works as before with your own key.
+
+## v8.9.2 (2026-11-16)
+- The AI switch is now a small toggle named AI in the top bar (top corner), on the Recovery planner and Schedule comparison pages; the large switch card on the Recovery planner page is gone. Off by default.
+
+## v8.9.1 (2026-11-16)
+- Recovery planner: the AI switch is now visible before the two XER files are loaded (it only showed after loading).
+
+## v8.9 (2026-11-16)
+- Recovery planner AI (OFF by default; switch on the page and in Setup → AI; needs your own Claude key and consent). Claude gives a second opinion: delay cause per car with confidence, a logic verdict per lever (sound / check / illogical), extra ideas (not recalculated), action wording for the contractor or the employer, and questions to check with the contractor. Every AI item is marked "AI suggestion" and has Accept / Reject; accepted wording goes into the Word report and Excel. Claude never supplies a number.
+- Privacy: only activity names, day counts and lever shapes are sent (no cost, resources, file or project name); activity codes are replaced by A1, A2… unless you choose otherwise; an estimate of the cost is shown before each run.
+- "With AI against without AI" table: engine-only plan against the AI-vetted plan (levers called illogical taken out, days recalculated by the engine), counts of causes, verdicts, actions, questions and your accept / reject decisions; button to switch off the illogical levers; download as .xlsx.
+
+## v8.8 (2026-11-16)
+- Menu notes: hovering a menu item (or keyboard focus, or touch and hold for half a second on a phone) shows a small dark note with 3 to 4 short points on what the section does, plus what goes in and what comes out. Covers all 14 items. Setup has a switch to turn the notes off and a delay setting (ms).
+
 ## v8.7 (2026-11-16)
 - Recovery planner: the number of paths is now chosen by the user (box "Paths" next to the path list, 1 to 30; also a Setup field, default 3). The path list, Network, Parallel plots and Logic Gantt views all follow it. A message shows if fewer paths exist than asked.
 - Parallel plots: a later path can now split from any higher path, not only from Path 1. It starts one step after the car holding the shared activity (dashed arrow), and a table lists, for each path, which path it splits from and at which activity. Lane titles are cut to the box width (full text on hover).
