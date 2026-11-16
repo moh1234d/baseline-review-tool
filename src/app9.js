@@ -63,9 +63,12 @@ function viewCompare() {
   ${hl('Total changes listed', fmtN(r.total), 'across ' + (r.sections.length - 1) + ' sections', r.total ? 'info' : 'ok')}</div>
   <div class="jump">${r.sections.map((s, i) => `<button data-cgo="${s.key}" class="${s.key !== 'over' && s.count ? 'has' : ''}">${i + 1}. ${esc(s.title)}${s.key !== 'over' ? ' <i>' + fmtN(s.count) + '</i>' : ''}</button>`).join('')}</div></section>`;
   h += cmpAiCard();
+  if (!S.cmp.tr || S.cmp.tr.forRes !== r) { try { runTrain('cmp'); } catch (e) { console.error(e); } S.cmp.tr.forRes = r; }
   r.sections.forEach((s, i) => {
     h += `<section class="card" id="cmp-${s.key}"><h2>${i + 1}. ${esc(s.title)} ${s.key === 'over' ? '' : (s.count ? qchip(fmtN(s.count) + ' change' + (s.count === 1 ? '' : 's'), '') : qchip('No changes', 'ok'))}</h2><p class="hint" style="margin-top:0">${esc(s.desc)}</p>`;
     if (s.facts.length) h += `<div class="facts">${s.facts.map(f => `<div><span>${esc(f.l)}</span><b>${ccell(f.v)}</b></div>`).join('')}</div>`;
+    /* v8.0: the delay train comes first; the long activity lists move behind a button */
+    if (s.key === 'delay') { h += `<div class="tr-embed">${trainHtml('cmp')}</div><details class="tr-lists" ${S.cmp.listsOpen ? 'open' : ''}><summary class="btn">Show the activity lists (${fmtN(s.blocks.reduce((a, b) => a + b.rows.length, 0))} rows)</summary>`; }
     s.blocks.forEach((b, bi) => {
       if (b.title) h += `<h3 class="bt">${esc(b.title)} ${b.counts ? `<small>${fmtN(b.rows.length)}</small>` : ''}</h3>`;
       if (!b.rows.length) { h += `<p class="none">✓ ${b.note && b.counts ? 'No changes.' : (b.note || 'No changes.')}</p>`; return; }
@@ -74,6 +77,7 @@ function viewCompare() {
       h += qtbl(b.cols, rows.map(row => '<tr>' + row.map((c, ci) => `<td class="${b.num.includes(ci) ? 'n' : ''}${ci === 0 ? ' nw' : ''}">${ccell(c)}</td>`).join('') + '</tr>'), { num: b.num, h: 460 });
       if (b.rows.length > lim) h += `<div class="actions"><button class="btn sm" data-cmore="${key}">Show ${Math.min(200, b.rows.length - lim)} more</button><span class="hint">Showing ${fmtN(lim)} of ${fmtN(b.rows.length)} – the Excel download has all of them.</span></div>`;
     });
+    if (s.key === 'delay') h += `</details>`;
     h += `</section>`;
   });
   $('#main').innerHTML = h + '</div></div>';

@@ -1,3 +1,6 @@
+## v8.0.1 (2026-11-16)
+- Schedule comparison, section 3 (Delayed activities and the driving path): the delay train and the recovery levers now appear here too, above the lists. The long activity tables are behind a "Show the activity lists" button.
+
 ## v8.0 (2026-11-16)
 Delay analysis: new "Delay train" section at the top of the results (Option A and B).
 - The driving chain is traced back from the selected finish through completed work (actual dates) to the start, so the activity where the delay first entered is found even months before the data date. Predecessors that finished after an activity had already finished (out-of-sequence progress) are not taken as drivers.
