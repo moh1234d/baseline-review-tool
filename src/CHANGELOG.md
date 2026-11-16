@@ -1,3 +1,6 @@
+## v8.9.2 (2026-11-16)
+- The AI switch is now a small toggle named AI in the top bar (top corner), on the Recovery planner and Schedule comparison pages; the large switch card on the Recovery planner page is gone. Off by default.
+
 ## v8.9.1 (2026-11-16)
 - Recovery planner: the AI switch is now visible before the two XER files are loaded (it only showed after loading).
 

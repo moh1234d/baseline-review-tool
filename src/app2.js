@@ -21,7 +21,8 @@ function renderNav() {
   $('#steps').innerHTML = NAV_GROUPS.map(([g, items, full]) => `<div class="sepl">${g}</div>` + items.map(item).join('') + (full ? `<div class="sepl sub">Full review</div>` + STEPS.map(([k, t], i) => `<button class="step ${S.step === k ? 'on' : ''} ${done[k] ? 'done' : ''}" data-go="${k}"><i>${i + 1}</i><span>${t}</span></button>`).join('') : '')).join('');
   $('#projname').textContent = S.cfg.projectName || 'New project';
   const [g, t] = navTitle(); $('#tb-group').textContent = g; $('#tb-title').textContent = t; $('#tb-proj').textContent = S.cfg.projectName || 'No project name';
-  const ai = !!(S.cfg.ai && (S.step === 'recovery' ? S.cfg.ai.rp === true : S.cfg.ai.cmp === true)); $('#tb-ai').textContent = ai ? 'AI on' : 'AI off'; $('#tb-ai').className = 'tbchip' + (ai ? ' on' : '');
+  const ai = !!(S.cfg.ai && (S.step === 'recovery' ? S.cfg.ai.rp === true : S.cfg.ai.cmp === true)), tg = $('#tb-ai'), live = S.step === 'recovery' || S.step === 'compare';
+  tg.innerHTML = '<span class="tsw"></span>AI'; tg.className = 'tbchip tbai' + (ai ? ' on' : '') + (live ? '' : ' ro'); tg.setAttribute('aria-checked', String(ai)); tg.title = live ? 'Claude AI for this page: ' + (ai ? 'on' : 'off') + ' (click to switch)' : 'AI switch is on the Schedule comparison and Recovery planner pages';
 }
 function go(step) { S.step = step; $('#main').classList.remove('wide'); renderNav(); const f = { setup: viewSetup, files: viewFiles, confirm: viewConfirm, run: viewRun, report: viewReport, quick: viewQuick, portfolio: viewPortfolio, compare: viewCompare, delay: viewDelay, builder: viewBuilder, claims: viewClaims, roundtrip: viewRoundtrip, assess: viewAssess, recovery: viewRecovery }[step]; $('#main').scrollTop = 0; window.scrollTo(0, 0); f(); }
 

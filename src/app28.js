@@ -71,8 +71,9 @@ function rpAiCompareRows(D, R) {
 }
 function rpAiPanel(D, R, T) {
   const st = rpAiSt(), on = rpAiOn(), ready = !!(S.cfg.ai.on && S.cfg.ai.key && S.cfg.ai.consent);
-  const sw = `<label class="sw" style="margin:0"><input type="checkbox" data-rpai-use="1" style="width:22px;height:22px;flex:none" ${on ? 'checked' : ''}><span><b>Use Claude AI in the Recovery planner</b> – ${on ? 'ON: Claude gives a second opinion on the causes, the levers and the wording. It never changes a number.' : 'OFF (default): nothing is sent to Anthropic and the planner works exactly as before.'}${on && !ready ? ' <span class="hint">Also needs the key and consent in Setup → AI.</span>' : ''}</span></label>`;
-  if (!on || !T) return `<section class="card rpai ${on ? 'on' : 'off'}" style="margin-top:14px;border-left:4px solid ${on ? '#0B7A75' : '#9AA5B1'}">${sw}${on ? '<p class="hint" style="margin:8px 0 0">Load both files to run the AI review.</p>' : ''}</section>`;
+  const sw = `<b>Claude AI</b> – second opinion on causes, levers and wording; it never changes a number.${!ready ? ' <span class="hint">Needs your key and consent in Setup → AI.</span>' : ''}`;
+  if (!on) return '';
+  if (!T) return `<section class="card rpai" style="margin-top:14px;border-left:4px solid #0B7A75">${sw}<p class="hint" style="margin:8px 0 0">Load both files to run the AI review.</p></section>`;
   if (false) return `<section class="card rpai off" style="margin-top:14px;border-left:4px solid #9AA5B1">${sw}</section>`;
   const { pack } = rpAiPack(D, R), chars = JSON.stringify(pack).length, c1 = estimateCost('rp_review', chars, 1500), c2 = estimateCost('rp_words', chars, 1500), rv = rpAiRev(D, R), w = rpAiWords(D, R), busy = st.busy;
   const tag = '<span class="rpai-tag" title="Claude suggestion – check it before you use it">AI suggestion</span>', btn = (id, lab, extra) => `<button class="btn ${extra || ''}" data-rpai-run="${id}" ${busy ? 'disabled' : ''}>${lab}</button>`;
@@ -115,7 +116,6 @@ async function rpAiXlsx() {
   download(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Recovery_AI_vs_no_AI_v' + E.VERSION + '.xlsx'); toast('Comparison created', 'ok');
 }
 document.addEventListener('change', e => { const t = e.target; if (!t || !t.matches) return;
-  if (t.matches('[data-rpai-use]')) { S.cfg.ai.rp = t.checked; saveAiSettings(); renderNav(); viewRecovery(); }
   if (t.id === 'rpai-anon') { const st = rpAiSt(); st.anon = t.value === '1'; LS.set('brt.rpAnon', st.anon); viewRecovery(); }
   if (t.id === 'rpai-tone') { rpAiSt().tone = t.value; viewRecovery(); } });
 document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-rpai-run],[data-rpai-dec],[data-rpai-apply],[data-rpai-xlsx]'); if (!t) return;
@@ -123,3 +123,7 @@ document.addEventListener('click', e => { const t = e.target.closest && e.target
   if (t.dataset.rpaiDec) { const [k, v] = t.dataset.rpaiDec.split(/:(?=acc$|rej$)/), st = rpAiSt(); st.dec[k] = st.dec[k] === v ? undefined : v; viewRecovery(); return; }
   if (t.dataset.rpaiApply) { const D = trSt('rp'), v = rpAiVetted(D, S.rp); if (v) { v.dropped.forEach(i => D.levOn.delete(i)); trainComb('rp'); viewRecovery(); } return; }
   if (t.dataset.rpaiXlsx) rpAiXlsx().catch(err => { console.error(err); toast('Could not create the file: ' + err.message, 'bad'); }); });
+
+document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('#tb-ai'); if (!t) return;
+  if (S.step === 'recovery') { S.cfg.ai.rp = !(S.cfg.ai.rp === true); saveAiSettings(); renderNav(); viewRecovery(); }
+  else if (S.step === 'compare') { S.cfg.ai.cmp = !(S.cfg.ai.cmp === true); saveAiSettings(); renderNav(); viewCompare(); } });
