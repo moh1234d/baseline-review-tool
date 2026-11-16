@@ -4,7 +4,7 @@ E.defaultCfg = () => ({
   milestones: [], reviewDays: null, projectType: 'infrastructure', fileType: 'baseline',
   weights: { engineering: 7, procurement: 13, construction: 75, handover: 5 },
   weightGroup: { general: 'engineering', mobilization: 'engineering', engineering: 'engineering', procurement: 'procurement', delivery: 'procurement', construction: 'construction', closeout: 'handover' },
-  floatLimit: 60, stdDayHr: 8, maxWeekHr: 60, durLimit: 60, reportingPeriod: 30, maxFsLag: 0, nearCrit: 10, costTol: 0.1, weightTol: 0.5, curveTol: 10,
+  floatLimit: 60, stdDayHr: 8, maxWeekHr: 60, fridayOff: true, ramadanNormal: true, durLimit: 60, reportingPeriod: 30, maxFsLag: 0, nearCrit: 10, costTol: 0.1, weightTol: 0.5, curveTol: 10,
   approvalExclude: 'shop ?draw|material|submittal|sample|mock-?up|method statement|as-?built',
   calRules: { general: 6, mobilization: 6, engineering: 6, procurement: 6, delivery: 7, construction: 6, closeout: 6, approval: 5 },
   wbsMap: null, approvalIds: null, rsrc: { progress: null, cost: null }, projFinishId: null,
@@ -243,12 +243,13 @@ E.run = function (M, cfg) {
   }
 
   { // L10d v7.9: calendar working hours (daily hours, weekly total, definition vs the days actually worked)
-    const c = add({ id: 'L10d', group: 'Calendars', title: 'Calendar working hours', rule: 'Each calendar in use should work ' + (cfg.stdDayHr || 8) + ' h per day, no more than ' + (cfg.maxWeekHr || 60) + ' h per week, and its stored weekly hours must equal the hours its days actually give.' });
+    const c = add({ id: 'L10d', group: 'Calendars', title: 'Calendar working hours', rule: 'Each calendar in use should work ' + (cfg.stdDayHr || 8) + ' h per day, no more than ' + (cfg.maxWeekHr || 60) + ' h per week, and its stored weekly hours must equal the hours its days actually give. Friday is the rest day' + (cfg.fridayOff !== false ? ' (checked)' : ' (not checked)') + '; Ramadan is treated as normal working days, so reduced Ramadan hours are not flagged.' });
     const used = [...new Set(T.map(t => t.clndr))].filter(i => M.cal[i]);
     for (const id of used) { const cal = M.cal[id], n = T.filter(t => t.clndr === id).length;
       const dh = cal.dayHr, wk = cal.weekHr != null ? cal.weekHr : null, days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].filter((d, i) => cal.dow[i + 1]).join(' ');
       const sd = cfg.stdDayHr || 8, mw = cfg.maxWeekHr || 60;
       if (Math.abs(dh - sd) > 0.01) c.items.push({ id: cal.name, name: 'Working day is ' + dh + ' h, not ' + sd + ' h', wbs: '', field: 'Hours per day', value: String(dh), note: n + ' activities · ' + days });
+      if (cfg.fridayOff !== false && cal.dow[6]) c.items.push({ id: cal.name, name: 'Friday is a working day', wbs: '', field: 'Friday', value: 'Working', note: n + ' activities · ' + days + ' · Friday is the weekly rest day in this review' });
       const calc = dh * cal.wdw; if (calc > mw) c.items.push({ id: cal.name, name: 'Weekly hours above ' + mw + ' h', wbs: '', field: 'Hours per week', value: String(calc), note: cal.wdw + ' days × ' + dh + ' h' + (cal.wdw === 7 ? ' · no weekly rest day' : '') });
       if (wk != null && Math.abs(wk - cal.wdwHr) > 0.01 && cal.wdwHr != null) c.items.push({ id: cal.name, name: 'Stored weekly hours differ from the days actually worked', wbs: '', field: 'Hours per week', value: wk + ' stored vs ' + cal.wdwHr + ' worked', note: days });
       c.evidence.push(cal.name + ': ' + dh + ' h × ' + cal.wdw + ' days (' + days + '), ' + n + ' activities');

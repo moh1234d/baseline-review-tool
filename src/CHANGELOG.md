@@ -1,3 +1,7 @@
+## v7.9.1 (2026-11-16)
+- Friday is the weekly rest day: check L10d now flags calendars that work Fridays (setting in Setup, on by default).
+- Ramadan is treated as normal working days: reduced Ramadan hours are never flagged or counted (setting in Setup, on by default).
+
 ## v7.9 (2026-11-15)
 Added after checking an outside AI review against the real 32k-activity XER. Several of its claims were already handled (progress override in the recalculation, top-down stage detection) or did not apply (no expected-finish dates in the file); the rest was added.
 - New check L10d, Calendar working hours: flags calendars whose day is not the standard length, whose weekly hours exceed a limit, or whose stored weekly hours differ from the days actually worked. Two new settings in Setup: standard working day (default 8 h) and maximum weekly hours (default 60).
