@@ -40,6 +40,10 @@ async function svRestore(rec) {
 }
 /* ---------- Google Drive: organised as  <tool folder> / <project number - name> / Project file | <date> / Reports, Source files ---------- */
 const DR = { tok: null, exp: 0, ids: {}, last: 0, lastOk: 0, err: '', checked: null, up: new Set(), ready() { return !!this.tok && Date.now() < this.exp - 60000; }, reset() { this.ids = {}; this.up = new Set(); this.checked = null; this.rootName = ''; } };
+const drKeep = () => { try { sessionStorage.setItem('brt.drtok', JSON.stringify({ t: DR.tok, e: DR.exp })); } catch (e) {} };
+try { const k = JSON.parse(sessionStorage.getItem('brt.drtok') || 'null'); if (k && k.t && k.e > Date.now() + 60000) { DR.tok = k.t; DR.exp = k.e; } } catch (e) {}
+let drSilentAt = 0;
+document.addEventListener('pointerdown', () => { const c = SV.get(); if (!c.drive || !c.clientId || !c.lastConn || DR.ready() || Date.now() - drSilentAt < 600000 || !/^https?:/.test(location.protocol)) return; drSilentAt = Date.now(); drConnect().then(() => { drRefresh(); }).catch(() => {}); }, true);
 const svNo = () => String(S.cfg.projectNo || '').trim();
 const drClean = t => String(t).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
 const drProjName = () => { const m = SV.get().nameMode || 'name', no = svNo(), nm = svName(), same = !no || no.toLowerCase() === nm.toLowerCase() || nm.toLowerCase().startsWith(no.toLowerCase());
@@ -50,7 +54,7 @@ const drLoadGsi = () => window.google && google.accounts && google.accounts.oaut
 async function drConnect() {
   const c = SV.get(); if (!c.clientId) throw new Error('Enter the Google client ID in Setup → Saved projects first.'); if (!/^https?:/.test(location.protocol)) throw new Error('Google sign-in works only on your site address, not on a saved file.');
   await drLoadGsi();
-  return new Promise((res, rej) => { const tc = google.accounts.oauth2.initTokenClient({ client_id: c.clientId, scope: drScope(), callback: r => { if (r.error) rej(new Error(r.error_description || r.error)); else { DR.tok = r.access_token; DR.exp = Date.now() + (+r.expires_in || 3600) * 1000; DR.err = ''; SV.set({ lastConn: Date.now() }); res(); } }, error_callback: e => rej(new Error(e && e.type || 'Google sign-in was closed')) }); tc.requestAccessToken({ prompt: SV.get().lastConn ? '' : 'consent' }); });
+  return new Promise((res, rej) => { const tc = google.accounts.oauth2.initTokenClient({ client_id: c.clientId, scope: drScope(), callback: r => { if (r.error) rej(new Error(r.error_description || r.error)); else { DR.tok = r.access_token; DR.exp = Date.now() + (+r.expires_in || 3600) * 1000; DR.err = ''; drKeep(); SV.set({ lastConn: Date.now() }); res(); } }, error_callback: e => rej(new Error(e && e.type || 'Google sign-in was closed')) }); tc.requestAccessToken({ prompt: SV.get().lastConn ? '' : 'consent' }); });
 }
 async function drApi(path, opt) { const r = await fetch('https://www.googleapis.com' + path, Object.assign({}, opt, { headers: Object.assign({ Authorization: 'Bearer ' + DR.tok }, opt && opt.headers) })); if (r.status === 401) { DR.tok = null; throw new Error('Google Drive sign-in expired: press Reconnect.'); } if (r.status === 404) throw new Error('Google Drive: folder or file not found (404). If you set your own folder, check its link and that you connected with full Drive access.'); if (!r.ok) throw new Error('Google Drive error ' + r.status); return r; }
 const drQ = t => String(t).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -163,7 +167,7 @@ document.addEventListener('click', async e => { const t = e.target.closest && e.
     if (a === 'connect') { await drConnect(); toast('Google Drive connected', 'ok'); drRefresh(); sessionSaveSoon(); }
     if (a === 'check') { const id = await drPath([drProjName()]); DR.err = ''; DR.checked = Date.now(); toast('Folder OK: ' + drStatus().path.split(' / ').slice(0, 2).join(' / '), 'ok'); drRefresh(); }
     if (a === 'drive-now') { if (!S.cfg.projectName && !(S.rp && S.rp.A)) throw new Error('Nothing to save yet: set a project name or load files first.'); await drSave(); toast('Saved to Google Drive', 'ok'); drRefresh(); }
-    if (a === 'disconnect') { DR.tok = null; DR.reset(); SV.set({ lastConn: 0 }); toast('Google Drive disconnected in this browser', 'ok'); drRefresh(); }
+    if (a === 'disconnect') { DR.tok = null; try { sessionStorage.removeItem('brt.drtok'); } catch (e) {} DR.reset(); SV.set({ lastConn: 0 }); toast('Google Drive disconnected in this browser', 'ok'); drRefresh(); }
     if (a === 'clear') { if (confirm('Delete ALL saved projects from this browser?')) { for (const r of await idb.all()) await idb.del(r.id); S._svRec = null; toast('Saved projects cleared', 'ok'); } }
   } catch (err) { console.error(err); DR.err = err.message; toast(err.message, 'bad'); drRefresh(); } });
 function svCard() {
