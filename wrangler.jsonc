@@ -2,6 +2,7 @@
   "name": "baseline-review-tool",
   "main": "worker/index.js",
   "compatibility_date": "2026-11-01",
+  "kv_namespaces": [{ "binding": "BRT_KV", "id": "b57c59c98ce54b5e8ca70cad3cd3cbe0" }],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

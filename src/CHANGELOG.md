@@ -1,3 +1,6 @@
+## v9.5 (2026-11-17)
+- Google Drive signs in automatically through your Cloudflare Worker: press Connect once, the Worker keeps the Google refresh token (in Cloudflare KV, never in the browser) and gives the tool a fresh short-lived token whenever it needs one, on every device. Needs Worker secrets GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET. Without them the tool falls back to the browser sign-in of v9.4.
+
 ## v9.4 (2026-11-17)
 - Google Drive sign-in survives a page refresh (kept in this browser tab for up to an hour). When it has expired, the first click on the page asks Google to renew it quietly, so you only press Reconnect when Google needs you to.
 
