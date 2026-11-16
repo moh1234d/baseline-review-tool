@@ -1,3 +1,6 @@
+## v8.9.1 (2026-11-16)
+- Recovery planner: the AI switch is now visible before the two XER files are loaded (it only showed after loading).
+
 ## v8.9 (2026-11-16)
 - Recovery planner AI (OFF by default; switch on the page and in Setup → AI; needs your own Claude key and consent). Claude gives a second opinion: delay cause per car with confidence, a logic verdict per lever (sound / check / illogical), extra ideas (not recalculated), action wording for the contractor or the employer, and questions to check with the contractor. Every AI item is marked "AI suggestion" and has Accept / Reject; accepted wording goes into the Word report and Excel. Claude never supplies a number.
 - Privacy: only activity names, day counts and lever shapes are sent (no cost, resources, file or project name); activity codes are replaced by A1, A2… unless you choose otherwise; an estimate of the cost is shown before each run.

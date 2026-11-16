@@ -72,7 +72,8 @@ function rpAiCompareRows(D, R) {
 function rpAiPanel(D, R, T) {
   const st = rpAiSt(), on = rpAiOn(), ready = !!(S.cfg.ai.on && S.cfg.ai.key && S.cfg.ai.consent);
   const sw = `<label class="sw" style="margin:0"><input type="checkbox" data-rpai-use="1" style="width:22px;height:22px;flex:none" ${on ? 'checked' : ''}><span><b>Use Claude AI in the Recovery planner</b> – ${on ? 'ON: Claude gives a second opinion on the causes, the levers and the wording. It never changes a number.' : 'OFF (default): nothing is sent to Anthropic and the planner works exactly as before.'}${on && !ready ? ' <span class="hint">Also needs the key and consent in Setup → AI.</span>' : ''}</span></label>`;
-  if (!on) return `<section class="card rpai off" style="margin-top:14px;border-left:4px solid #9AA5B1">${sw}</section>`;
+  if (!on || !T) return `<section class="card rpai ${on ? 'on' : 'off'}" style="margin-top:14px;border-left:4px solid ${on ? '#0B7A75' : '#9AA5B1'}">${sw}${on ? '<p class="hint" style="margin:8px 0 0">Load both files to run the AI review.</p>' : ''}</section>`;
+  if (false) return `<section class="card rpai off" style="margin-top:14px;border-left:4px solid #9AA5B1">${sw}</section>`;
   const { pack } = rpAiPack(D, R), chars = JSON.stringify(pack).length, c1 = estimateCost('rp_review', chars, 1500), c2 = estimateCost('rp_words', chars, 1500), rv = rpAiRev(D, R), w = rpAiWords(D, R), busy = st.busy;
   const tag = '<span class="rpai-tag" title="Claude suggestion – check it before you use it">AI suggestion</span>', btn = (id, lab, extra) => `<button class="btn ${extra || ''}" data-rpai-run="${id}" ${busy ? 'disabled' : ''}>${lab}</button>`;
   const dec = (key) => { const d = st.dec[key]; return `<span class="rpai-dec"><button class="btn sm ${d === 'acc' ? 'primary' : ''}" data-rpai-dec="${key}:acc">Accept</button><button class="btn sm ${d === 'rej' ? 'primary' : ''}" data-rpai-dec="${key}:rej">Reject</button></span>`; };
