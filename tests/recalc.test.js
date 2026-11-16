@@ -1,5 +1,5 @@
 const fs=require('fs');const dir=require('path').join(__dirname,'..','src')+'/';
-const files=['engine1','engine2','engine3','engine4','engine5','engine6','engine7','xerfields','engine8','engine9','engine10','engine11','engine12','engine13','engine14','engine15'];
+const files=['engine1','engine2','engine3','engine4','engine5','engine6','engine7','xerfields','engine8','engine9','engine10','engine11','engine12','engine13','engine14','engine15','engine16'];
 const code=files.map(f=>fs.readFileSync(dir+f+'.js','utf8')).join('\n')+'\nreturn E;';
 const E=new Function('window','document','localStorage',code)({},{},{});
 // day numbers: 2026-01-05 is Monday. day = epoch days
@@ -36,5 +36,14 @@ const assert=require('assert');let n=0;const eq=(name,got,want)=>{assert.strictE
  eq('expected finish: option on shortens finish',fmt(run([mkE()],{sched_use_expect_end_flag:'Y'}).ef.get('E')),'2026-01-12');
  eq('expected finish: option off uses remaining duration',fmt(run([mkE()],{sched_use_expect_end_flag:'N'}).ef.get('E')),'2026-01-30');
  eq('expected finish: setting forced on',fmt(E.recalc({dataDate:D('2026-01-05'),cal:{c:cal},tasks:[mkE()],so:{}},{expectFinish:'on'}).ef.get('E')),'2026-01-12');
+}
+
+{ // v8.0 delay train: origin = first activity that added the delay, traced through completed work
+ const mkM=(sl)=>{const a=mk('A',{status:'TK_Complete',es:D('2026-01-05'),ef:D('2026-01-09'),as:D('2026-01-05'),durWd:5}),b=mk('B',{status:sl?'TK_Complete':'TK_Complete',es:D('2026-01-12'),ef:D(sl?'2026-01-30':'2026-01-16'),as:D('2026-01-12'),durWd:5}),
+  c=mk('C',{es:D(sl?'2026-02-02':'2026-01-19'),ef:D(sl?'2026-02-06':'2026-01-23'),durWd:5,remWd:5}),f=mk('F',{isMile:true,isFinMile:true,type:'TT_FinMile',es:D(sl?'2026-02-06':'2026-01-23'),ef:D(sl?'2026-02-06':'2026-01-23'),durWd:0});
+  link(a,b);link(b,c);link(c,f);return {tasks:[a,b,c,f],cal:{c:cal},wbs:{},dataDate:D('2026-02-02')};};
+ const Tr=E.delayTrain(mkM(false),mkM(true),{targetCode:'F'});
+ eq('train: origin is the activity that overran',Tr.origin.code,'B');eq('train: delay it added (calendar days)',Tr.origin.own,14);eq('train: finish slip',Tr.target.slip,14);
+ const t=mk('R',{durWd:20,remWd:5});eq('recalc uses stored remaining duration without the raw rows',fmt(E.recalc({dataDate:D('2026-01-05'),cal:{c:cal},tasks:[t],so:{}},{}).ef.get('R')),'2026-01-09');
 }
 console.log(n+' checks passed');

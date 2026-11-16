@@ -3,7 +3,7 @@
    Same engine files and default settings as Quick review. Nothing is uploaded. */
 const fs = require('fs'), path = require('path');
 const dir = path.join(__dirname, '..', 'src') + '/';
-const files = ['engine1','engine2','engine3','engine4','engine5','engine6','engine7','xerfields','engine8','engine9','engine10','engine11','engine12','engine13','engine14','engine15'];
+const files = ['engine1','engine2','engine3','engine4','engine5','engine6','engine7','xerfields','engine8','engine9','engine10','engine11','engine12','engine13','engine14','engine15','engine16'];
 const E = new Function('window', 'document', 'localStorage', files.map(f => fs.readFileSync(dir + f + '.js', 'utf8')).join('\n') + '\nreturn E;')({}, {}, {});
 const xer = process.argv[2], out = process.argv[3] || 'xer_summary.json';
 if (!xer) { console.error('usage: node tools/run_xer.js file.xer [out.json]'); process.exit(1); }

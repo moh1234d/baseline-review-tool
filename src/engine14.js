@@ -5,7 +5,7 @@ E.recalc = function (M, o) {
   const shift = (cal, d, lag) => { const n = Math.round(lag || 0), st = n >= 0 ? 1 : -1; for (let i = 0; i < Math.abs(n); i++) { d += st; let g = 0; while (!E.isWorking(cal, d) && g++ < 400) d += st; } return d; };
   const addWd = (cal, s, n) => { let d = work(cal, s), c = 1; while (c < n) { d++; if (E.isWorking(cal, d)) c++; } return d; };
   const subW = (cal, e, n) => { let d = workBack(cal, e), c = 1; while (c < n) { d--; if (E.isWorking(cal, d)) c++; } return d; };
-  const remOf = t => { if (o.rem && o.rem.has(t.id)) return o.rem.get(t.id); const raw = o.raw && o.raw.get(t.code); if (raw) { const h = parseFloat(raw.remain_drtn_hr_cnt); if (!isNaN(h)) return h / (calOf(t).dayHr || 8); } return t.durWd || 0; };
+  const remOf = t => { if (o.rem && o.rem.has(t.id)) return o.rem.get(t.id); const raw = o.raw && o.raw.get(t.code); if (raw) { const h = parseFloat(raw.remain_drtn_hr_cnt); if (!isNaN(h)) return h / (calOf(t).dayHr || 8); } return t.remWd != null ? t.remWd : (t.durWd || 0); };
   const inc = M.tasks.filter(t => t.status !== 'TK_Complete' && t.type !== 'TT_LOE' && t.type !== 'TT_WBS'), es = new Map(), ef = new Map(); for (const t of M.tasks) if (t.status === 'TK_Complete') { es.set(t.id, t.es); ef.set(t.id, t.ef); }
   const indeg = new Map(), ids = new Set(inc.map(t => t.id)); for (const t of inc) indeg.set(t.id, 0); for (const t of inc) for (const l of t.pre) if (ids.has(l.from.id)) indeg.set(t.id, indeg.get(t.id) + 1);
   const q = inc.filter(t => !indeg.get(t.id)), order = []; while (q.length) { const t = q.pop(); order.push(t); for (const l of t.succ) { if (!ids.has(l.to.id)) continue; const k = indeg.get(l.to.id) - 1; indeg.set(l.to.id, k); if (!k) q.push(l.to); } }

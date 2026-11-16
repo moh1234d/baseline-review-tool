@@ -105,7 +105,7 @@ E.buildModel = function (T) {
     const o = {
       id: t.task_id, code: t.task_code, name: t.task_name, wbs: t.wbs_id, clndr: t.clndr_id, type: t.task_type,
       isMile: t.task_type === 'TT_Mile' || t.task_type === 'TT_FinMile', isFinMile: t.task_type === 'TT_FinMile',
-      durWd: wdDur, durCal: wdDur == null ? null : wdDur * k, tfWd: wdTF, tfCal: wdTF == null ? null : wdTF * k,
+      durWd: wdDur, remWd: hr(t.remain_drtn_hr_cnt) == null ? null : hr(t.remain_drtn_hr_cnt) / cal.dayHr, durCal: wdDur == null ? null : wdDur * k, tfWd: wdTF, tfCal: wdTF == null ? null : wdTF * k,
       es: E.pd(t.act_start_date) != null ? E.pd(t.act_start_date) : E.pd(t.early_start_date), ef: E.pd(t.act_end_date) != null ? E.pd(t.act_end_date) : E.pd(t.early_end_date), ts: E.pd(t.target_start_date), te: E.pd(t.target_end_date),
       as: E.pd(t.act_start_date), af: E.pd(t.act_end_date), cstrType: t.cstr_type, cstrDate: E.pd(t.cstr_date), ee: E.pd(t.expect_end_date), cstrType2: t.cstr_type2, cstrDate2: E.pd(t.cstr_date2),
       status: t.status_code, codes: tcode[t.task_id] || {}, pre: [], succ: [], asg: [], cat: null

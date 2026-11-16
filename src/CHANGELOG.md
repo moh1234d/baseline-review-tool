@@ -1,3 +1,12 @@
+## v8.0 (2026-11-16)
+Delay analysis: new "Delay train" section at the top of the results (Option A and B).
+- The driving chain is traced back from the selected finish through completed work (actual dates) to the start, so the activity where the delay first entered is found even months before the data date. Predecessors that finished after an activity had already finished (out-of-sequence progress) are not taken as drivers.
+- The chain is shown as cars: done (grey), in progress (amber), still to come (white), finish (navy). Each car shows the days it added or recovered; the car where the delay starts is flagged. A reading line names the origin, the largest single addition, what done work added and recovered, and the best lever ahead.
+- Click a car: its activities with planned vs actual/current duration and the delay each added (origin card with planned vs actual bars for the origin car).
+- Mitigation levers for the cars still to come, each tested with the what-if recalculation: overlap the trades, shorten long lags, extra crew or second shift, run approval/authority steps in parallel. Levers apply to identical copies (same activity and WBS leaf in other plots or blocks) and also show what the car alone would save. Tick levers to see the combined gain and the remaining delay.
+- Settings in the section (phone and web): origin threshold, number of cars, overlap %, long-lag limits, crew %, minimum remaining duration, identical copies on/off, authority words.
+- Engine: remaining duration is now stored on each activity, so the recalculation no longer depends on the raw file rows.
+
 ## v7.10.1 (2026-11-16)
 - Schedule comparison: the "different project" warning no longer compares the P6 project ID (it changes with every revision or copy). It now warns only when fewer than 30% of activity IDs match between the two files (setting in Setup) and states how many matched.
 
