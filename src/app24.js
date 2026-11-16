@@ -1,26 +1,26 @@
 /* ===== APP PART 24 (v8.0): Delay train (where the delay entered the chain) + origin and recovery plan (levers tested with the what-if) ===== */
 const trCfg = () => Object.assign({}, E.TRAIN_DEFAULTS, S.cfg.train || {});
 /* k = 'dl' (Delay analysis) or 'cmp' (Schedule comparison, section 3) */
-const trSt = k => k === 'cmp' ? (S.cmp.tr = S.cmp.tr || {}) : S.dl;
-const trAB = k => { if (k === 'cmp') return S.cmp.A && S.cmp.B ? [S.cmp.A.M, S.cmp.B.M] : null; const D = S.dl; if (!D.base || !D.ups.length) return null; return [D.base.M, D.mode === 'A' ? (D.upUsed || D.ups[D.ups.length - 1]).M : dlModels().slice(-1)[0].M]; };
-const trRender = k => { const y = window.scrollY; if (k === 'cmp') { if (S.step === 'compare') viewCompare(); } else if (S.step === 'delay') viewDelay(); window.scrollTo(0, y); };
+const trSt = k => k === 'cmp' ? (S.cmp.tr = S.cmp.tr || {}) : k === 'rp' ? ((S.rp = S.rp || {}).tr = S.rp.tr || {}) : S.dl;
+const trAB = k => { if (k === 'rp') return S.rp && S.rp.A && S.rp.B ? [S.rp.A.M, S.rp.B.M] : null; if (k === 'cmp') return S.cmp.A && S.cmp.B ? [S.cmp.A.M, S.cmp.B.M] : null; const D = S.dl; if (!D.base || !D.ups.length) return null; return [D.base.M, D.mode === 'A' ? (D.upUsed || D.ups[D.ups.length - 1]).M : dlModels().slice(-1)[0].M]; };
+const trRender = k => { const y = window.scrollY; if (k === 'rp') { if (S.step === 'recovery') viewRecovery(); } else if (k === 'cmp') { if (S.step === 'compare') viewCompare(); } else if (S.step === 'delay') viewDelay(); window.scrollTo(0, y); };
 function runTrain(k) {
-  k = k || 'dl'; const D = trSt(k); D.train = null; D.lev = null; D.comb = null; D.trainErr = null;
+  k = k || 'dl'; const D = trSt(k); D.train = null; D.lev = null; D.comb = null; D.trainErr = null; D.r0 = null; D.seq = null;
   const ab = trAB(k); if (!ab) return; const Bm = ab[1];
   const tcode = k === 'cmp' ? ((E.dlTargets(Bm)[0] || {}).code) : D.target;
   try { D.train = E.delayTrain(ab[0], Bm, { targetCode: tcode, cfg: trCfg() }); } catch (e) { console.error(e); D.trainErr = e.message; return; }
   D.trainSel = D.train && D.train.origin ? D.train.cars.findIndex(c => c.isOrigin) : 0; D.levBusy = true;
   setTimeout(() => {
     try { const hw = Object.assign({}, E.DELAY_DEFAULTS, S.cfg.delay || {}).holdWords; D.lev = E.trainLevers(Bm, D.train, { holdWords: hw });
-      /* start with the best lever of each car ticked */
-      const best = new Map(); D.lev.levers.forEach((l, i) => { if (l.gain > 0 && (!best.has(l.car) || l.gain > D.lev.levers[best.get(l.car)].gain)) best.set(l.car, i); });
+      /* start with the best contractor lever of each car switched on (authority steps need the employer, so they start off) */
+      const best = new Map(); D.lev.levers.forEach((l, i) => { if (l.gain > 0 && l.kind !== 'parallel' && (!best.has(l.car) || l.gain > D.lev.levers[best.get(l.car)].gain)) best.set(l.car, i); });
       D.levOn = new Set(best.values()); trainComb(k);
-      D.levAll = D.lev.levers.length ? E.trainCombine(Bm, D.lev.levers.filter(l => l.gain > 0)).gain : 0;
+      D.levAll = D.lev.levers.length ? E.trainCombine(Bm, D.lev.levers.filter(l => l.gain > 0), { r0: D.r0 }).gain : 0;
     } catch (e) { console.error(e); D.trainErr = 'Levers could not be tested: ' + e.message; }
     D.levBusy = false; trRender(k);
   }, 30);
 }
-function trainComb(k) { const D = trSt(k), ab = trAB(k); if (!D.lev || !ab) return; const Bm = ab[1]; const on = [...D.levOn].map(i => D.lev.levers[i]); D.comb = on.length ? E.trainCombine(Bm, on) : { gain: 0 }; }
+function trainComb(k) { const D = trSt(k), ab = trAB(k); if (!D.lev || !ab) return; const Bm = ab[1]; const on = [...D.levOn].sort((a, b) => D.lev.levers[a].car - D.lev.levers[b].car || D.lev.levers[b].gain - D.lev.levers[a].gain).map(i => D.lev.levers[i]); D.r0 = D.r0 || E.recalc(Bm, {}); D.comb = E.trainCombine(Bm, on, { r0: D.r0 }); if (k === 'rp') D.seq = E.trainSequence(Bm, on, { r0: D.r0 }); }
 const trD = (v, unit) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + (unit === false ? '' : ' d');
 function trainHtml(k) {
   k = k || 'dl'; const D = trSt(k), T = D.train; if (!T) return D.trainErr ? `<div class="warnbox">${esc(D.trainErr)}</div>` : '';

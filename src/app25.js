@@ -1,0 +1,164 @@
+/* ===== APP PART 25 (v8.1): Recovery planner — wide cockpit: delay train, finish timeline, waterfall, lever cards; Word report and Excel table ===== */
+const RPD = d => E.fmtDate(d);
+const RPK = { overlap: 'Overlap', lag: 'Shorter lags', crew: 'Extra crews', parallel: 'Parallel approvals' };
+const rpWhere = (T, l) => rpShort(T.cars[l.car].title.replace(/ \(\+\d+ other\)$/, ''), 24);
+const rpShort = (s, n) => { const parts = String(s || '').split('/').map(x => x.trim()).filter(Boolean); s = parts.length ? parts.reduce((a, b) => b.length >= a.length ? b : a) : String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
+const rpDays = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(Math.round(v)) + ' d';
+function rpLevers(D) { return D.lev ? D.lev.levers.map((l, i) => [l, i]).sort((a, b) => (D.levOn.has(b[1]) - D.levOn.has(a[1])) || a[0].car - b[0].car || b[0].gain - a[0].gain) : []; }
+function rpNums(D) {
+  const T = D.train, tg = T.target, gain = D.comb ? D.comb.gain : 0, slip = tg.slip || 0;
+  return { tg, gain, slip, mit: tg.fB - gain, rem: slip - gain, nOn: D.levOn ? D.levOn.size : 0 };
+}
+/* ---------- charts (plain SVG; the same drawings go into the Word report) ---------- */
+function rpTimelineSvg(D, W) {
+  const T = D.train, N = rpNums(D), r0 = D.comb && D.comb.r0, r1 = D.comb && D.comb.r1, cars = T.cars.filter(c => c.phase === 'next' || c.phase === 'now');
+  W = W || 760; const L = 170, R = 14, top = 40, rowH = 34, H = top + cars.length * rowH + 74;
+  const sh = (t, which) => { const d = which === 's' ? t.es : t.ef; if (d == null || !r0 || !r1) return d; const a = (which === 's' ? r0.es : r0.ef).get(t.id), b = (which === 's' ? r1.es : r1.ef).get(t.id); return a == null || b == null ? d : d + (b - a); };
+  const st = cars.map(c => { const ts = c.rows.map(r => r.t); const s0 = Math.min(...ts.map(t => t.es).filter(x => x != null)), e0 = Math.max(...ts.map(t => t.ef).filter(x => x != null)); const s1 = Math.min(...ts.map(t => sh(t, 's')).filter(x => x != null)), e1 = Math.max(...ts.map(t => sh(t, 'f')).filter(x => x != null)); return { c, s0, e0, s1, e1 }; });
+  const lo = Math.min(...st.map(x => Math.min(x.s0, x.s1))) - 10, hi = Math.max(N.tg.fB, N.tg.fA || 0, ...st.map(x => x.e0)) + 12, X = d => L + (d - lo) * (W - L - R) / Math.max(1, hi - lo);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" font-family="Segoe UI, Arial, sans-serif">`;
+  const d0 = new Date(lo * 864e5), months = Math.max(1, Math.round((hi - lo) / 30 / 6));
+  for (let y = d0.getUTCFullYear(), m = d0.getUTCMonth() + 1; ; m += months) { const dd = Date.UTC(y, m, 1) / 864e5; if (dd > hi) break; if (dd < lo) continue; const x = X(dd); s += `<line x1="${x}" x2="${x}" y1="${top - 6}" y2="${H - 50}" stroke="#eef0f4"/><text x="${x}" y="${top - 10}" font-size="10" fill="#5e6a7d" text-anchor="middle">${new Date(dd * 864e5).toLocaleString('en-GB', { month: 'short', year: '2-digit', timeZone: 'UTC' })}</text>`; }
+  st.forEach((x, i) => { const y = top + i * rowH; s += `<text x="${L - 8}" y="${y + 16}" font-size="11" text-anchor="end" fill="#1d2433">${esc(rpShort(x.c.title.replace(/ \(\+\d+ other\)$/, ''), 26))}</text><rect x="${X(x.s0)}" y="${y + 3}" width="${Math.max(3, X(x.e0) - X(x.s0))}" height="10" rx="3" fill="#b9c2d0"/><rect x="${X(x.s1)}" y="${y + 16}" width="${Math.max(3, X(x.e1) - X(x.s1))}" height="10" rx="3" fill="#2e8b57"/>`; });
+  const mk = [[N.tg.fA, '#1B2A41', 'baseline ' + RPD(N.tg.fA), top - 24, 'end', true], [N.mit, '#2e8b57', 'with levers ≈ ' + RPD(N.mit), H - 37, 'end'], [N.tg.fB, '#c0392b', 'now ' + RPD(N.tg.fB), H - 25, 'end']];
+  for (const [d, col, lab, yy, anc, dash] of mk) { if (d == null) continue; const x = X(d); s += `<line x1="${x}" x2="${x}" y1="${top - 4}" y2="${H - 48}" stroke="${col}" stroke-width="${dash ? 1 : 2}" ${dash ? 'stroke-dasharray="3 3"' : ''}/><text x="${x + (anc === 'end' ? -4 : 4)}" y="${yy}" font-size="10.5" font-weight="700" fill="${col}" text-anchor="${anc}">${esc(lab)}</text>`; }
+  s += `<rect x="${L}" y="${H - 14}" width="12" height="7" fill="#b9c2d0"/><text x="${L + 16}" y="${H - 7}" font-size="10" fill="#5e6a7d">current</text><rect x="${L + 70}" y="${H - 14}" width="12" height="7" fill="#2e8b57"/><text x="${L + 86}" y="${H - 7}" font-size="10" fill="#5e6a7d">with the selected levers</text>`;
+  return s + '</svg>';
+}
+function rpWaterSvg(D, W) {
+  const N = rpNums(D), seq = D.seq || [], bars = [['Delay now', 0, N.slip, '#c0392b', rpDays(N.slip)]]; let lvl = N.slip;
+  for (const x of seq) { const a = lvl - x.marg; bars.push([RPK[x.lv.kind] + ' · ' + rpWhere(D.train, x.lv), Math.min(a, lvl), Math.max(a, lvl), x.marg > 0 ? '#2e8b57' : '#9aa6b8', x.marg > 0 ? '−' + x.marg + ' d' : '0 d']); lvl = a; }
+  bars.push(['Remaining delay', 0, Math.max(0, lvl), lvl > 0 ? '#c0392b' : '#2e8b57', rpDays(Math.max(0, lvl))]);
+  W = W || 760; const H = 260, L = 44, T = 24, B = 52, top = Math.max(10, N.slip) * 1.12, bw = (W - L - 10) / bars.length, Y = v => T + (1 - v / top) * (H - T - B);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" font-family="Segoe UI, Arial, sans-serif">`;
+  const step = top > 60 ? 20 : 10; for (let v = 0; v <= top; v += step) s += `<line x1="${L}" x2="${W}" y1="${Y(v)}" y2="${Y(v)}" stroke="#eef0f4"/><text x="${L - 6}" y="${Y(v) + 3}" font-size="10" fill="#5e6a7d" text-anchor="end">${v} d</text>`;
+  bars.forEach(([n, a, b, c, lab], i) => { const x = L + i * bw + 8, w = Math.min(120, bw - 16), cx = x + w / 2; s += `<rect x="${x}" y="${Y(b)}" width="${w}" height="${Math.max(2, Y(a) - Y(b))}" rx="3" fill="${c}"/><text x="${cx}" y="${Y(b) - 6}" font-size="12" font-weight="800" fill="${c}" text-anchor="middle">${lab}</text>`;
+    const pr = n.includes(' · ') ? n.split(' · ') : (() => { const w = n.split(' '), h = Math.ceil(w.length / 2); return [w.slice(0, h).join(' '), w.slice(h).join(' ')]; })(); s += `<text x="${cx}" y="${H - 34}" font-size="11" font-weight="700" fill="#1d2433" text-anchor="middle">${esc(pr[0])}</text><text x="${cx}" y="${H - 20}" font-size="10" fill="#5e6a7d" text-anchor="middle">${esc(dtr(pr[1] || '', Math.max(10, Math.floor(bw / 6))))}</text>`; });
+  return s + '</svg>';
+}
+function rpTrainSvg(D, W, perRow) {
+  const T = D.train, cars = T.cars, on = new Set([...(D.levOn || [])].map(i => D.lev.levers[i].car)); W = W || 760; perRow = perRow || cars.length; const rows = Math.ceil(cars.length / perRow), gap = 6, cw = (W - gap * (perRow - 1)) / perRow, CH = 92, H = rows * CH + (rows - 1) * 10;
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" font-family="Segoe UI, Arial, sans-serif">`;
+  cars.forEach((c, i) => { const x = (i % perRow) * (cw + gap), y0 = Math.floor(i / perRow) * (CH + 10), end = c.phase === 'end', fill = end ? '#1B2A41' : c.isOrigin ? '#fdf3f2' : c.phase === 'done' ? '#f0f2f6' : '#ffffff', st = c.isOrigin ? '#c0392b' : c.phase === 'now' ? '#e08a1e' : end ? '#1B2A41' : '#d5dce4', d = end ? (T.target.slip || 0) : c.delta, col = end ? '#ffb4a8' : d >= 1 ? '#c0392b' : d <= -1 ? '#2e8b57' : '#5e6a7d';
+    const words = (end ? T.target.name : rpShort(c.title, 60)).split(' '), lines = []; let cur = ''; for (const w of words) { if ((cur + ' ' + w).trim().length > Math.max(8, Math.floor(cw / 5.6))) { lines.push(cur.trim()); cur = w; } else cur += ' ' + w; } lines.push(cur.trim());
+    s += `<g transform="translate(0 ${y0})"><rect x="${x + 1}" y="1" width="${cw - 2}" height="${CH - 8}" rx="7" fill="${fill}" stroke="${st}" stroke-width="${c.isOrigin || c.phase === 'now' ? 2 : 1}"/>${on.has(c.idx) ? `<rect x="${x + 1}" y="${CH - 11}" width="${cw - 2}" height="4" rx="2" fill="#2e8b57"/>` : ''}`;
+    s += `<text x="${x + 7}" y="14" font-size="8.5" font-weight="700" fill="${end ? '#c9d3e3' : '#5e6a7d'}">${{ done: 'DONE', now: 'IN PROGRESS', next: 'NEXT', end: 'FINISH' }[c.phase]}${c.isOrigin ? ' · STARTS HERE' : ''}</text>`;
+    lines.slice(0, 3).forEach((ln, j) => { s += `<text x="${x + 7}" y="${28 + j * 11}" font-size="9" font-weight="700" fill="${end ? '#ffffff' : '#1d2433'}">${esc(ln)}</text>`; });
+    s += `<text x="${x + 7}" y="${CH - 18}" font-size="14" font-weight="800" fill="${col}">${rpDays(d)}</text></g>`; });
+  return s + '</svg>';
+}
+/* ---------- view ---------- */
+function rpEnsure() {
+  S.rp = S.rp || {};
+  if (!S.rp.A && !S.rp.B) { if (S.cmp && S.cmp.A && S.cmp.B) { S.rp.A = S.cmp.A; S.rp.B = S.cmp.B; S.rp.from = 'Schedule comparison'; } else if (S.dl && S.dl.base && S.dl.ups && S.dl.ups.length) { S.rp.A = S.dl.base; S.rp.B = S.dl.ups[S.dl.ups.length - 1]; S.rp.from = 'Delay analysis'; } }
+  if (S.rp.A && S.rp.B && !(S.rp.tr && S.rp.tr.train) && !(S.rp.tr && S.rp.tr.trainErr)) runTrain('rp');
+}
+async function rpLoad(side, file) { try { const x = await xerStage(file); S.rp = S.rp || {}; S.rp[side] = { M: x.M, name: file.name }; S.rp.from = ''; if (S.rp.tr) S.rp.tr = {}; toast(file.name + ': ' + x.M.tasks.length.toLocaleString('en-US') + ' activities', 'ok'); } catch (e) { toast(e.message, 'bad'); } if (S.rp.A && S.rp.B) runTrain('rp'); viewRecovery(); }
+function viewRecovery() {
+  rpEnsure(); const R = S.rp, D = R.tr || {}, T = D.train;
+  $('#main').classList.add('wide');
+  const slot = (side, lab) => `<div class="rp-slot"><span>${lab}</span><b title="${esc(R[side] ? R[side].name : '')}">${R[side] ? esc(dtr(R[side].name, 44)) : 'not loaded'}</b><label class="btn sm" for="rp-${side}">${R[side] ? 'Replace' : 'Choose XER'}</label><input type="file" id="rp-${side}" accept=".xer,.txt" hidden></div>`;
+  let h = `<div class="rp-wrap"><header class="rp-head"><h1>Recovery planner</h1><div class="rp-files">${slot('A', 'Baseline / previous')}${slot('B', 'Current update')}${R.from ? `<span class="hint">files taken from ${esc(R.from)}</span>` : ''}</div></header>`;
+  if (!T) { $('#main').innerHTML = h + `<section class="card"><p class="hint" style="margin:0">${D.trainErr ? esc(D.trainErr) : 'Load the baseline (or the previous update) and the current update. The planner finds where the delay entered the driving chain, tests the mitigation levers with the what-if recalculation and lets you switch them on and off. Files loaded in Schedule comparison or Delay analysis are used automatically.'}</p></section></div>`; return; }
+  const N = rpNums(D), o = T.origin, lev = rpLevers(D);
+  const kpi = (lab, big, sub, cl) => `<div class="rp-k ${cl || ''}"><span>${lab}</span><b>${big}</b><small>${sub}</small></div>`;
+  h += `<div class="rp-kpis">${kpi('Baseline finish', esc(RPD(N.tg.fA)), esc(dtr(R.A.name, 40)), '')}${kpi('Current forecast', esc(RPD(N.tg.fB)), rpDays(N.slip) + ' · ' + esc(dtr(R.B.name, 30)), N.slip > 0 ? 'bad' : 'ok')}${kpi('With selected levers', D.levBusy ? '…' : '≈ ' + esc(RPD(N.mit)), D.levBusy ? 'testing levers' : (N.gain > 0 ? '−' + N.gain + ' d' : '0 d') + ' · ' + N.nOn + ' lever' + (N.nOn === 1 ? '' : 's') + ' on', 'ok')}${kpi('Remaining delay', D.levBusy ? '…' : rpDays(Math.max(0, N.rem)), 'after the levers', N.rem > 0 ? 'amb' : 'ok')}${kpi('Delay started at', o ? esc(dtr(o.name, 40)) : '–', o ? esc(o.code) + ' · ' + rpDays(o.own) + (o.t.ef != null ? ' · ' + esc(RPD(o.t.ef)) : '') : '', 'bad sm')}</div>`;
+  /* train */
+  const onCar = new Map(); for (const i of (D.levOn || [])) { const l = D.lev.levers[i]; onCar.set(l.car, true); }
+  const ddIdx = T.cars.findIndex(c => c.phase === 'next' || c.phase === 'end');
+  const car = c => { const ph = { done: 'DONE', now: 'IN PROGRESS', next: 'NEXT', end: 'FINISH' }[c.phase], cl = c.delta >= 1 ? 'add' : c.delta <= -1 ? 'rec' : 'z', chips = lev.filter(([l]) => l.car === c.idx && l.gain > 0).slice(0, 3);
+    return `<button class="tr-car ${c.phase} ${c.isOrigin ? 'org' : ''} ${D.rpSel === c.idx ? 'sel' : ''} ${c.idx === ddIdx && ddIdx > 0 ? 'fnext' : ''}" data-rpcar="${c.idx}" title="${esc(c.title)}">${c.isOrigin ? '<span class="tr-flag">DELAY STARTS HERE</span>' : ''}<span class="tr-ph">${ph}</span><b class="tr-t">${esc(c.phase === 'end' ? N.tg.name : c.title)}</b>
+      ${c.phase === 'end' ? `<span class="tr-d add">${rpDays(N.slip)}</span><small>${esc(RPD(N.tg.fB))}${N.gain > 0 ? ' → ≈ ' + esc(RPD(N.mit)) + ' with levers' : ''}</small>` : `<span class="tr-d ${cl}">${rpDays(c.delta)}</span><small>${c.n} activit${c.n === 1 ? 'y' : 'ies'} · slip ${rpDays(c.slip)}</small>`}
+      <span class="tr-chips">${D.levBusy && (c.phase === 'next' || c.phase === 'now') ? '<i class="chip">testing…</i>' : chips.map(([l, i]) => `<i class="chip ${D.levOn.has(i) ? 'lvon' : ''}">${esc(l.label.split(' ')[0])} −${l.gain} d</i>`).join('')}</span><span class="tr-wh"><i></i><i></i></span></button>`; };
+  h += `<section class="card rp-train"><h2>Delay train — longest path <small>grey = done · amber = in progress · white = to come · teal chip = lever switched on · click a car for its activities</small></h2><div class="tr-train rp-row">${T.cars.map(car).join('')}</div>`;
+  if (D.rpSel != null && T.cars[D.rpSel]) { const sc = T.cars[D.rpSel]; h += `<div class="rp-det"><div class="actions" style="justify-content:space-between;margin:0 0 6px"><b>${esc(sc.title)} · ${sc.n} activities · ${rpDays(sc.delta)}</b><button class="btn sm" data-rpcar="${sc.idx}">Close</button></div><div class="scroll" style="max-height:300px"><table class="tbl"><thead><tr><th>Activity</th><th>Status</th><th>Planned</th><th>${sc.phase === 'done' ? 'Actual' : 'Current'}</th><th>Slip</th><th style="text-align:right">Effect</th></tr></thead><tbody>${sc.rows.map(r => `<tr class="${r === o ? 'tr-or' : ''}"><td>${esc(r.name)}<br><small class="hint">${esc(r.code)}${r.isNew ? ' · not in the baseline' : ''}</small></td><td>${esc((r.status || '').replace('TK_', '').replace('NotStart', 'Not started'))}</td><td>${r.pDur == null ? '–' : r.pDur + ' d'}</td><td>${r.cDur == null ? '–' : r.cDur + ' d'}</td><td>${rpDays(r.slip)}</td><td style="text-align:right;font-weight:700" class="${r.own >= 1 ? 'tr-add' : r.own <= -1 ? 'tr-rec' : ''}">${r.own ? rpDays(r.own) : '0'}</td></tr>`).join('')}</tbody></table></div></div>`; }
+  h += `</section>`;
+  /* charts + levers */
+  const left = D.levBusy ? '<p class="hint">Testing the levers with the what-if recalculation…</p>' : `<h3 class="rp-h3">Finish with the selected levers</h3>${rpTimelineSvg(D, 700)}<p class="hint" style="margin:2px 0 14px">Grey = current dates of each stage still to come · green = with the levers switched on.</p><h3 class="rp-h3">How the selected levers add up</h3>${rpWaterSvg(D, 700)}<p class="hint" style="margin:2px 0 0">${(D.seq || []).some(x => x.marg !== x.lv.gain) ? 'Levers interact: a lever can save more (or less) together with others than on its own. The bars show what each one adds in the order switched on.' : 'Each bar shows what the lever adds on top of the ones before it.'}</p>`;
+  const flow = (lv) => { const ex = E.leverExamples(T, lv, 3); if (!ex.length) return ''; const nm = s => esc(rpShort(s, 26));
+    if (ex[0].kind === 'dur') return `<div class="lbl">REMAINING DURATION</div><div class="rp-flow">${ex.map(x => `<span>${nm(x.name || x.id)}</span><i>${x.from} d →</i><i class="ss">${x.to} d</i>`).join('<b>·</b>')}</div>`;
+    const row = (k) => ex.map((x, j) => (j === 0 || ex[j - 1].scode !== x.pcode ? `${j ? '<b>·</b>' : ''}<span>${nm(x.pred)}</span>` : '') + `<i class="${k === 'after' ? 'ss' : ''}">${esc(x[k])}</i><span>${nm(x.succ)}</span>`).join('');
+    return `<div class="lbl">NOW</div><div class="rp-flow">${row('before')}</div><div class="lbl">WITH THE LEVER</div><div class="rp-flow">${row('after')}</div>`; };
+  const marg = new Map((D.seq || []).map(x => [x.lv, x.marg]));
+  const card = ([l, i]) => { const on = D.levOn.has(i), c = T.cars[l.car], m = marg.get(l), gtxt = l.gain > 0 ? `−${l.gain} d alone${on && m != null && m !== l.gain ? ` · −${Math.max(0, m)} d in this combination` : ''}` : '0 d';
+    return `<label class="rp-lc ${on ? 'on' : ''} ${l.gain > 0 ? '' : 'nil'}"><div class="rp-lh"><input type="checkbox" class="rp-sw" data-trlev="rp:${i}" ${on ? 'checked' : ''}><b>${esc(l.label)} <small class="rp-wh">· ${esc(rpWhere(T, l))}</small></b><em>${gtxt}</em></div><p>${esc(l.who)} · ${l.n} change${l.n === 1 ? '' : 's'}${l.copies > 1 ? ' · all ' + l.copies + ' identical copies (this car alone: ' + (l.gainCarOnly > 0 ? '−' + l.gainCarOnly : '0') + ' d)' : ''} · ${esc(l.how)}</p>${flow(l)}</label>`; };
+  const right = D.levBusy ? '<p class="hint">…</p>' : (lev.length ? lev.map(card).join('') : '<p class="hint">No lever found on the work still to come.</p>') + `<div class="rp-btns"><button class="btn primary" data-rprep="docx" ${N.nOn ? '' : 'disabled title="Switch on at least one lever"'}>Generate recovery report (Word)</button><button class="btn" data-rprep="xlsx">Export lever table (Excel)</button></div><p class="hint" style="margin-top:8px">Numbers from the tool's what-if recalculation (no resource levelling); the finish with levers is the current P6 finish minus the days recovered. Whether a lever is possible on site is for the reviewer to judge. Lever settings: Delay analysis → Delay train settings.</p>`;
+  h += `<div class="rp-g2"><section class="card">${left}</section><section class="card"><h2>Mitigation levers</h2>${right}</section></div></div>`;
+  $('#main').innerHTML = h;
+}
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-rpcar]'); if (!b) return; const D = trSt('rp'), i = +b.dataset.rpcar; D.rpSel = D.rpSel === i ? null : i; trRender('rp'); });
+document.addEventListener('change', e => { const el = e.target; if (el.type === 'file' && (el.id === 'rp-A' || el.id === 'rp-B') && el.files.length) rpLoad(el.id.slice(3), el.files[0]); });
+document.addEventListener('click', async e => { const b = e.target.closest && e.target.closest('[data-rprep]'); if (!b) return; b.disabled = true; try { if (b.dataset.rprep === 'docx') await rpDocx(); else await rpXlsx(); } catch (err) { console.error(err); toast('Could not create the file: ' + err.message, 'bad'); } b.disabled = false; });
+/* ---------- corrective actions (fixed wording from the selected levers) ---------- */
+function rpActions(D) {
+  const T = D.train, c0 = trCfg(), o = T.origin, big = T.rows.slice().sort((a, b) => b.own - a.own)[0], con = [], auth = [];
+  const on = [...D.levOn].map(i => D.lev.levers[i]).sort((a, b) => a.car - b.car), marg = new Map((D.seq || []).map(x => [x.lv, x.marg]));
+  for (const l of on) { const where = rpShort(T.cars[l.car].title, 70), cp = l.copies > 1 ? ` in all ${l.copies} identical plots/blocks` : '', d = Math.max(0, marg.get(l) != null ? marg.get(l) : l.gain);
+    if (l.kind === 'overlap') con.push([`Submit a revised sequence for “${where}” allowing each activity to start when its predecessor is ${c0.startAtPct}% done${cp}, with the crew loading that supports it.`, d, l]);
+    if (l.kind === 'lag') con.push([`Justify or reduce the lags of ${c0.lagMin} working days or more in “${where}” to ${c0.lagTo} days (${l.n} link${l.n === 1 ? '' : 's'})${cp}.`, d, l]);
+    if (l.kind === 'crew') con.push([`Add crews or a second shift to “${where}” to cut the remaining durations by ${c0.crewPct}%${cp}, and confirm the resources by name and date.`, d, l]);
+    if (l.kind === 'parallel') auth.push([`Agree with the authority and the employer to run the approval and handover steps of “${where}” in parallel (each starting 2 days after the previous one starts).`, d, l]); }
+  if (o) con.push([`Explain the overrun of “${o.name}” (${o.code}${o.pDur != null ? `: ${o.pDur} d planned, ${o.cDur} d taken` : ''}), where the delay started, and the measures now in place.`, null]);
+  if (big && big !== o && big.own > 0) con.push([`Explain the overrun of “${big.name}” (${big.code}${big.pDur != null ? `: ${big.pDur} d planned, ${big.cDur} d taken` : ''}), the largest single addition (${rpDays(big.own)}).`, null]);
+  return { con, auth };
+}
+/* ---------- Word report ---------- */
+async function rpDocx() {
+  const D = trSt('rp'), T = D.train, R = S.rp, N = rpNums(D), A = rpActions(D);
+  const Dx = await lib('docx'); const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, ShadingType, AlignmentType, BorderStyle, ImageRun, Footer, PageNumber, TableLayoutType, VerticalAlign, PageBreak } = Dx;
+  const INK = '1B2A41', GREY = '5B6B7B', RED = 'C0392B', GRN = '2E8B57', AMB = 'B26A00', F = 'Calibri', FW = 10206;
+  const run = (t, o) => new TextRun(Object.assign({ text: String(t), size: 20, font: F, color: '27323F' }, o || {}));
+  const P = (kids, o) => new Paragraph(Object.assign({ spacing: { after: 80, line: 260 }, children: (Array.isArray(kids) ? kids : [kids]).map(k => typeof k === 'string' ? run(k) : k) }, o || {}));
+  const H = t => new Paragraph({ spacing: { before: 200, after: 80 }, keepNext: true, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'C9D2DB', space: 2 } }, children: [run(t, { size: 24, bold: true, color: INK })] });
+  const bd = { style: BorderStyle.SINGLE, size: 4, color: 'D5DCE4' };
+  const cell = (kids, w, fill, o) => new TableCell(Object.assign({ children: (Array.isArray(kids) ? kids : [kids]).map(k => typeof k === 'string' ? P(k, { spacing: { after: 0 } }) : k), width: { size: w, type: WidthType.DXA }, borders: { top: bd, bottom: bd, left: bd, right: bd }, shading: fill ? { type: ShadingType.CLEAR, fill } : undefined, margins: { top: 60, bottom: 60, left: 100, right: 100 }, verticalAlign: VerticalAlign.CENTER }, o || {}));
+  const tbl = (rows, cols) => new Table({ rows, columnWidths: cols, layout: TableLayoutType.FIXED, width: { size: cols.reduce((a, b) => a + b, 0), type: WidthType.DXA } });
+  const hdr = (cols, ws) => new TableRow({ tableHeader: true, children: cols.map((c, i) => cell(P(run(c, { bold: true, color: 'FFFFFF', size: 18 }), { spacing: { after: 0 } }), ws[i], INK)) });
+  const sm = (t, o) => P(run(t, Object.assign({ size: 17 }, o || {})), { spacing: { after: 20 } });
+  const tile = (lab, val, sub, col, w) => cell([sm(lab.toUpperCase(), { color: GREY, size: 14, bold: true }), P(run(val, { size: 28, bold: true, color: col }), { spacing: { after: 10 } }), sm(sub, { color: GREY })], w, 'F4F6F9', { borders: { top: { style: BorderStyle.SINGLE, size: 18, color: col }, bottom: bd, left: bd, right: bd } });
+  const png = async (svg, maxW) => { const [w, h] = dlSize(svg), b = await svgToPng(dlPngSvg(svg), 2), buf = new Uint8Array(await b.arrayBuffer()), k = Math.min(1, (maxW || 640) / w); return new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 40, after: 60 }, children: [new ImageRun({ data: buf, transformation: { width: Math.round(w * k), height: Math.round(h * k) }, type: 'png' })] }); };
+  const proj = S.cfg.projectName || (R.B.M.proj && (R.B.M.proj.proj_short_name || '')) || 'Project', o = T.origin, big = T.rows.slice().sort((a, b) => b.own - a.own)[0];
+  const ch = [];
+  ch.push(P(run('RECOVERY ASSESSMENT', { size: 15, bold: true, color: '0B7A75', characterSpacing: 50 }), { spacing: { after: 20 } }), P(run(proj + ': finish ' + (N.slip > 0 ? N.slip + ' days late' : 'on time') + (N.gain > 0 ? ', about ' + N.gain + ' days recoverable' : ''), { size: 34, bold: true, color: INK }), { spacing: { after: 20 } }),
+    P(run(R.A.name + '  →  ' + R.B.name + '   ·   data date ' + RPD(R.B.M.dataDate) + '   ·   prepared by ' + (S.cfg.preparedBy || 'PMC') + '   ·   Baseline Review Tool v' + E.VERSION, { size: 16, color: GREY }), { spacing: { after: 120 } }));
+  const w4 = [2551, 2551, 2552, 2552];
+  ch.push(tbl([new TableRow({ children: [tile('Baseline finish', RPD(N.tg.fA), 'reference', INK, w4[0]), tile('Current forecast', RPD(N.tg.fB), rpDays(N.slip), N.slip > 0 ? RED : GRN, w4[1]), tile('With the actions', '≈ ' + RPD(N.mit), (N.gain > 0 ? '−' + N.gain : '0') + ' days', GRN, w4[2]), tile('Remaining delay', rpDays(Math.max(0, N.rem)), 'after the actions', N.rem > 0 ? AMB : GRN, w4[3])] })], w4));
+  ch.push(P([run('In short: ', { bold: true, color: INK }), run(`completion is forecast ${N.slip} days late (${RPD(N.tg.fB)} against ${RPD(N.tg.fA)}). `), run(o ? `The delay started at ${o.name} (${o.code}${o.pDur != null ? `, ${o.pDur} d planned, ${o.cDur} d taken` : ''}). ` : ''), run(`Work already done added ${T.added} days${T.recovered ? ' and recovered ' + Math.abs(T.recovered) + ' days' : ''}. `), run(N.gain > 0 ? `The ${N.nOn} selected action${N.nOn === 1 ? '' : 's'} would recover about ${N.gain} days, leaving ${Math.max(0, N.rem)} days to resolve.` : 'No selected action recovers time.', { bold: true })], { spacing: { before: 140, after: 100 } }));
+  ch.push(H('1. Where the delay started — the delay train'));
+  ch.push(P(`The longest path is traced back from the finish through the completed work. Each box is one stage of the path with the days it added (red) or recovered (green); the green bar under a box marks a stage with a selected action.${big && big !== o ? ` The largest single addition is ${big.name} (${rpDays(big.own)}).` : ''}`));
+  ch.push(await png(rpTrainSvg(D, 760, Math.ceil(T.cars.length / 2)), 660));
+  ch.push(H('2. Selected actions and their effect'));
+  ch.push(await png(rpWaterSvg(D, 820), 600));
+  const wa = [4300, 2500, 1500, 950, 956], seq = D.seq || [];
+  ch.push(tbl([hdr(['Action', 'Where on the path', 'Owner', 'Alone', 'Together'], wa), ...seq.map(x => new TableRow({ cantSplit: true, children: [cell(P(run(x.lv.label, { bold: true }), { spacing: { after: 0 } }), wa[0]), cell(sm(rpShort(T.cars[x.lv.car].title, 60)), wa[1]), cell(sm(x.lv.who), wa[2]), cell(sm('−' + x.lv.gain + ' d'), wa[3]), cell(P(run((x.marg > 0 ? '−' + x.marg : '0') + ' d', { bold: true, color: x.marg > 0 ? GRN : GREY }), { spacing: { after: 0 } }), wa[4])] })),
+    new TableRow({ children: [cell(P(run('Total', { bold: true }), { spacing: { after: 0 } }), wa[0]), cell('', wa[1]), cell('', wa[2]), cell('', wa[3]), cell(P(run('−' + N.gain + ' d', { bold: true, color: GRN }), { spacing: { after: 0 } }), wa[4], 'EEF6F1')] })], wa));
+  ch.push(H('3. The finish with the selected actions'));
+  ch.push(await png(rpTimelineSvg(D, 820), 620));
+  ch.push(H('4. Corrective actions requested from the contractor'));
+  A.con.forEach((x, i) => ch.push(P([run((i + 1) + '.  ', { bold: true, color: INK }), run(x[0]), run(x[1] ? '  (≈ −' + x[1] + ' d)' : '', { color: GRN, bold: true })], { indent: { left: 360, hanging: 360 } })));
+  if (A.auth.length) { ch.push(P(run('To agree with the employer / authority', { bold: true, color: INK }), { spacing: { before: 120, after: 60 } })); A.auth.forEach((x, i) => ch.push(P([run((i + 1) + '.  ', { bold: true, color: INK }), run(x[0]), run(x[1] ? '  (≈ −' + x[1] + ' d)' : '', { color: GRN, bold: true })], { indent: { left: 360, hanging: 360 } }))); }
+  ch.push(H('Appendix A — what each action changes'));
+  const wb = [2300, 3200, 3200, 1506]; let rows = [];
+  for (const x of seq) { const l = x.lv; if (l.kind === 'crew') { for (const [id, v] of [...l.ch.rem].slice(0, 6)) { const t = R.B.M.byId && R.B.M.byId[id] || R.B.M.tasks.find(q => q.id === id); rows.push([l.label, t ? t.code + ' ' + t.name : id, 'remaining ' + Math.round(t && t.remWd != null ? t.remWd : 0) + ' d', Math.round(v) + ' d']); } }
+    else for (const [lk, arr] of [...l.ch.links].slice(0, 6)) rows.push([l.label, lk.from.code + ' ' + lk.from.name + '  →  ' + lk.to.code + ' ' + lk.to.name, lk.type + (lk.lagWd ? '+' + Math.round(lk.lagWd) : ''), arr.map(a => a.type + (a.lagWd ? '+' + a.lagWd : '')).join(' & ')]);
+    const tot = l.ch.links.size + l.ch.rem.size; if (tot > 6) rows.push([l.label, '… and ' + (tot - 6) + ' more (full list in the Excel table)', '', '']); }
+  ch.push(tbl([hdr(['Action', 'Link or activity', 'Now', 'With the action'], [wb[0], wb[1] + wb[2] - 1600, 1600, wb[3]]), ...rows.map(r => new TableRow({ cantSplit: true, children: [cell(sm(r[0]), wb[0]), cell(sm(r[1]), wb[1] + wb[2] - 1600), cell(sm(r[2]), 1600), cell(sm(r[3], { bold: true, color: GRN }), wb[3])] }))], [wb[0], wb[1] + wb[2] - 1600, 1600, wb[3]]));
+  ch.push(H('Assumptions and limits'));
+  for (const t of ['Dates and days come from the tool’s what-if recalculation of the current update (retained logic or progress override as set in the file, activity calendars, start constraints; no resource levelling). The finish with the actions is the current P6 finish minus the days recovered.', 'Actions are applied to identical copies of the same activity (same name and WBS) in other plots or blocks, so that a parallel path does not take over the finish.', 'Approval, authority and curing steps are never shortened by crews.', 'Whether an action is possible on site (crews, materials, access, safety) is for the contractor to confirm.', 'This is a delay and recovery assessment only. It does not decide entitlement or any extension of time.'])
+    ch.push(new Paragraph({ bullet: { level: 0 }, spacing: { after: 50 }, children: [run(t, { size: 18 })] }));
+  const doc = new Document({ styles: { default: { document: { run: { font: F } } } }, sections: [{ properties: { page: { margin: { top: 850, bottom: 850, left: 850, right: 850 } } }, footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [run('Recovery assessment · ' + proj + ' · page ', { size: 15, color: GREY }), new TextRun({ children: [PageNumber.CURRENT], size: 15, color: GREY, font: F })] })] }) }, children: ch }] });
+  download(await Packer.toBlob(doc), 'Recovery_assessment_' + proj.replace(/[^\w-]+/g, '_') + '_v' + E.VERSION + '.docx'); toast('Report created', 'ok');
+}
+/* ---------- Excel ---------- */
+async function rpXlsx() {
+  const D = trSt('rp'), T = D.train, R = S.rp, X = await lib('exceljs'), wb = new X.Workbook(); wb.creator = S.cfg.preparedBy || 'Baseline Review Tool';
+  const sheet = (name, cols, rows) => { const ws = wb.addWorksheet(name); ws.columns = cols.map(([h, w]) => ({ header: h, width: w })); ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }; ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B2A41' } }; rows.forEach(r => ws.addRow(r)); ws.views = [{ state: 'frozen', ySplit: 1 }]; return ws; };
+  const marg = new Map((D.seq || []).map(x => [x.lv, x.marg]));
+  sheet('Levers', [['On', 6], ['Car', 6], ['Where on the path', 50], ['Action', 34], ['Owner', 26], ['Changes', 10], ['Copies', 8], ['Days alone', 11], ['Days together', 13], ['This car only', 13], ['How', 60]], (D.lev ? D.lev.levers : []).map((l, i) => [D.levOn.has(i) ? 'Yes' : '', l.car + 1, T.cars[l.car].title, l.label, l.who, l.n, l.copies, l.gain, D.levOn.has(i) ? (marg.get(l) || 0) : '', l.gainCarOnly == null ? '' : l.gainCarOnly, l.how]));
+  const ch = []; for (const i of D.levOn) { const l = D.lev.levers[i]; for (const [lk, arr] of l.ch.links) ch.push([l.label, T.cars[l.car].title, lk.from.code, lk.from.name, lk.to.code, lk.to.name, lk.type + (lk.lagWd ? '+' + Math.round(lk.lagWd) : ''), arr.map(a => a.type + (a.lagWd ? '+' + a.lagWd : '')).join(' & '), '', '']);
+    for (const [id, v] of l.ch.rem) { const t = R.B.M.tasks.find(q => q.id === id); ch.push([l.label, T.cars[l.car].title, t ? t.code : id, t ? t.name : '', '', '', '', '', t && t.remWd != null ? Math.round(t.remWd * 10) / 10 : '', Math.round(v * 10) / 10]); } }
+  sheet('Changes (switched on)', [['Action', 30], ['Where', 40], ['Predecessor ID', 18], ['Predecessor', 44], ['Successor ID', 18], ['Successor', 44], ['Link now', 11], ['Link with action', 16], ['Remaining now (wd)', 16], ['Remaining with action (wd)', 20]], ch);
+  sheet('Delay train', [['Car', 6], ['Phase', 12], ['Stage', 60], ['Activities', 11], ['Days added', 11], ['Slip at end', 11], ['Delay starts here', 16]], T.cars.map((c, i) => [i + 1, c.phase, c.title, c.n, c.delta, c.slip, c.isOrigin ? 'Yes' : '']));
+  sheet('Chain', [['ID', 20], ['Activity', 60], ['Status', 12], ['Planned (d)', 11], ['Actual / current (d)', 16], ['Finish slip (d)', 13], ['Added (d)', 10]], T.rows.map(r => [r.code, r.name, r.status, r.pDur, r.cDur, r.slip, r.own]));
+  download(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Recovery_levers_v' + E.VERSION + '.xlsx'); toast('Table created', 'ok');
+}

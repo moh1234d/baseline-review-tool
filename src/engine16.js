@@ -96,5 +96,22 @@ E.trainLevers = function (B, train, o) {
 };
 E.trainCombine = function (B, levers, o) {
   const rem = new Map(), links = new Map(); for (const lv of levers) { for (const [k, v] of lv.ch.rem) rem.set(k, Math.min(v, rem.has(k) ? rem.get(k) : Infinity)); for (const [k, v] of lv.ch.links) links.set(k, v); }
-  const base = E.recalc(B, { raw: o && o.raw }), r = E.recalc(B, { raw: o && o.raw, rem, links }); return { gain: Math.round(base.finish - r.finish), finish: r.finish };
+  const r0 = (o && o.r0) || E.recalc(B, { raw: o && o.raw }), r1 = levers.length ? E.recalc(B, { raw: o && o.raw, rem, links }) : r0; return { gain: Math.round(r0.finish - r1.finish), finish: r1.finish, r0, r1 };
+};
+/* what each switched-on lever adds when they are switched on one after another (for the waterfall) */
+E.trainSequence = function (B, levers, o) {
+  const r0 = (o && o.r0) || E.recalc(B, { raw: o && o.raw }), out = []; let prev = 0;
+  for (let i = 0; i < levers.length; i++) { const g = E.trainCombine(B, levers.slice(0, i + 1), { r0, raw: o && o.raw }).gain; out.push({ lv: levers[i], marg: g - prev, cum: g }); prev = g; }
+  return out;
+};
+/* real examples of what a lever changes: up to n consecutive links on the chain (or any changed links), or durations for crews */
+E.leverExamples = function (train, lv, n) {
+  n = n || 3; const c = train.cars[lv.car], ids = new Set(c.rows.map(r => r.t.id)), out = [];
+  if (lv.kind === 'crew') { for (const r of c.rows) { if (lv.ch.rem.has(r.t.id)) out.push({ kind: 'dur', name: r.name, code: r.code, from: Math.round(r.t.remWd != null ? r.t.remWd : r.t.durWd || 0), to: Math.round(lv.ch.rem.get(r.t.id)) }); if (out.length >= n) break; }
+    if (!out.length) for (const [id, v] of lv.ch.rem) { out.push({ kind: 'dur', id, to: Math.round(v) }); if (out.length >= n) break; } return out; }
+  const lk = l => ({ kind: 'link', pred: l.from.name, succ: l.to.name, pcode: l.from.code, scode: l.to.code, before: l.type + (l.lagWd ? '+' + Math.round(l.lagWd) : ''), after: lv.ch.links.get(l).map(x => x.type + (x.lagWd ? '+' + x.lagWd : '')).join(' & ') });
+  for (let i = 1; i < c.rows.length && out.length < n; i++) { const l = c.rows[i].t.pre.find(x => x.from === c.rows[i - 1].t); if (l && lv.ch.links.has(l)) out.push(lk(l)); }
+  if (out.length < n) for (const [l] of lv.ch.links) { if (out.length >= n) break; if (ids.has(l.to.id) && !out.some(x => x.pcode === l.from.code && x.scode === l.to.code)) out.push(lk(l)); }
+  if (out.length < n) for (const [l] of lv.ch.links) { if (out.length >= n) break; if (!out.some(x => x.pcode === l.from.code && x.scode === l.to.code)) out.push(lk(l)); }
+  return out;
 };

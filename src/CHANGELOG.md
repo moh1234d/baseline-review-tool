@@ -1,3 +1,13 @@
+## v8.1 (2026-11-16)
+New page "Recovery planner" (Compare and analyse), wide screen:
+- Top: baseline finish, current forecast, finish with the selected levers, remaining delay, where the delay started.
+- Delay train of the longest path; a lever's chip on a car turns teal when the lever is switched on; click a car for its activities.
+- Finish timeline (current vs with levers per stage still to come) and a waterfall of what each switched-on lever adds, in order (levers interact).
+- Lever cards with a switch, owner, days alone and in the current combination, and real examples of the links or durations each lever changes (now vs with the lever). Every switch re-runs the what-if.
+- "Generate recovery report (Word)": 2 pages — headline, delay train, waterfall + action table, finish timeline, corrective actions for the contractor (and items to agree with the employer/authority), appendix of changed links, assumptions.
+- "Export lever table (Excel)": levers, every change of the switched-on levers, the delay train and the chain.
+- Uses the files already loaded in Schedule comparison or Delay analysis, or its own two file slots.
+
 ## v8.0.1 (2026-11-16)
 - Schedule comparison, section 3 (Delayed activities and the driving path): the delay train and the recovery levers now appear here too, above the lists. The long activity tables are behind a "Show the activity lists" button.
 
