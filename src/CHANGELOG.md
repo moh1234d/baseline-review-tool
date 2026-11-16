@@ -1,3 +1,6 @@
+## v9.0 (2026-11-16)
+- Claude server proxy: the Worker can hold the Anthropic key as the secret ANTHROPIC_API_KEY. The tool detects it (/api/claude-status) and then needs no key in the browser; the Setup → AI switch "Use the server proxy" turns it off. The proxy sits behind the password gate, accepts only Claude models, caps the output length (8000 tokens, or AI_MAX_TOKENS) and can limit models (AI_MODELS). Without the secret the tool works as before with your own key.
+
 ## v8.9.2 (2026-11-16)
 - The AI switch is now a small toggle named AI in the top bar (top corner), on the Recovery planner and Schedule comparison pages; the large switch card on the Recovery planner page is gone. Off by default.
 

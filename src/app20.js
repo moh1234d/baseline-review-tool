@@ -39,7 +39,7 @@ async function cmpAiRun(kind) {
 function cmpAiCard() {
   const r = S.cmp.res; if (!r || !r.dly) return '';
   const a = S.cmp.ai && S.cmp.ai.sig === cmpAiSig() ? S.cmp.ai : null, busy = S.cmp.aiBusy, rv = a && a.review, ac = a && a.actions, chars = cmpAiPack().length;
-  const ready = S.cfg.ai.on && S.cfg.ai.key && S.cfg.ai.consent;
+  const ready = S.cfg.ai.on && (S.cfg.ai.key || aiViaProxy()) && S.cfg.ai.consent;
   const list = (t, arr, f) => arr && arr.length ? `<h4>${t}</h4><ul>${arr.map(f).join('')}</ul>` : '';
   const codes = c => c && c.length ? ` <span class="hint">[${c.map(esc).join(', ')}]</span>` : '';
   const use = S.cfg.ai.cmp === true, tog = '';
@@ -75,7 +75,7 @@ function rpAiSheets(sheet) { const a = cmpAiResult(); if (!a) return; const rv =
 
 /* on/off switch, shown at the top of the comparison page (before any file is loaded). Default: OFF */
 function cmpAiSwitch() { const use = S.cfg.ai.cmp === true;
-  return `<div class="card" style="margin-bottom:14px;border-left:4px solid ${use ? '#0B7A75' : '#9AA5B1'}"><label class="sw" style="margin:0"><input type="checkbox" data-cai-use="1" style="width:22px;height:22px;flex:none" ${use ? "checked" : ""}><span><b>Use Claude AI in this comparison</b> – ${use ? 'ON: after both schedules are loaded, a Claude review card appears with the review and suggestion buttons.' : 'OFF (default): no AI step runs, nothing is sent to Anthropic, and no AI text goes into the report or appendix.'}${use && !(S.cfg.ai.on && S.cfg.ai.key && S.cfg.ai.consent) ? ' <span class="hint">Also needs the key and consent in Setup → AI.</span>' : ''}</span></label></div>`; }
+  return `<div class="card" style="margin-bottom:14px;border-left:4px solid ${use ? '#0B7A75' : '#9AA5B1'}"><label class="sw" style="margin:0"><input type="checkbox" data-cai-use="1" style="width:22px;height:22px;flex:none" ${use ? "checked" : ""}><span><b>Use Claude AI in this comparison</b> – ${use ? 'ON: after both schedules are loaded, a Claude review card appears with the review and suggestion buttons.' : 'OFF (default): no AI step runs, nothing is sent to Anthropic, and no AI text goes into the report or appendix.'}${use && !(S.cfg.ai.on && (S.cfg.ai.key || aiViaProxy()) && S.cfg.ai.consent) ? ' <span class="hint">Also needs the key and consent in Setup → AI.</span>' : ''}</span></label></div>`; }
 
 /* ===== v6.0 shell: phone menu ===== */
 document.addEventListener('click', e => { const t = e.target; if (t.closest && t.closest('#tb-menu')) { document.body.classList.toggle('navopen'); return; } if (document.body.classList.contains('navopen') && !(t.closest && t.closest('#nav') && !t.closest('[data-go]'))) document.body.classList.remove('navopen'); });

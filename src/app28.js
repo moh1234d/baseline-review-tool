@@ -70,7 +70,7 @@ function rpAiCompareRows(D, R) {
   return { rows, v };
 }
 function rpAiPanel(D, R, T) {
-  const st = rpAiSt(), on = rpAiOn(), ready = !!(S.cfg.ai.on && S.cfg.ai.key && S.cfg.ai.consent);
+  const st = rpAiSt(), on = rpAiOn(), ready = !!(S.cfg.ai.on && (S.cfg.ai.key || aiViaProxy()) && S.cfg.ai.consent);
   const sw = `<b>Claude AI</b> – second opinion on causes, levers and wording; it never changes a number.${!ready ? ' <span class="hint">Needs your key and consent in Setup → AI.</span>' : ''}`;
   if (!on) return '';
   if (!T) return `<section class="card rpai" style="margin-top:14px;border-left:4px solid #0B7A75">${sw}<p class="hint" style="margin:8px 0 0">Load both files to run the AI review.</p></section>`;
