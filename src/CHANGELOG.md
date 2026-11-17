@@ -1,3 +1,12 @@
+## v9.5 (2026-11-17)
+- Google Drive signs in automatically through your Cloudflare Worker: press Connect once, the Worker keeps the Google refresh token (in Cloudflare KV, never in the browser) and gives the tool a fresh short-lived token whenever it needs one, on every device. Needs Worker secrets GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET. Without them the tool falls back to the browser sign-in of v9.4.
+
+## v9.4 (2026-11-17)
+- Google Drive sign-in survives a page refresh (kept in this browser tab for up to an hour). When it has expired, the first click on the page asks Google to renew it quietly, so you only press Reconnect when Google needs you to.
+
+## v9.3 (2026-11-17)
+- Drive project folder name is now a setting (Setup → Saved projects): Project name only (default), Project number - name, or Project number only. When the number and name are the same, or the name already starts with the number, it is shown once.
+
 ## v9.2 (2026-11-17)
 - Google Drive status: a Status panel (Home and Setup) and a Drive dot in the top bar show Connection, Saving, Loading, the folder path the work goes to, the last save and any error; buttons Connect / Reconnect, Check the folder, Save this project to Drive now, Disconnect.
 - Organised folders: tool folder / <project number - name> / Project file (latest project) and <YYYY-MM-DD> / Reports and Source files. New field Project number (Setup and the Drive panel).

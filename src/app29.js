@@ -40,16 +40,37 @@ async function svRestore(rec) {
 }
 /* ---------- Google Drive: organised as  <tool folder> / <project number - name> / Project file | <date> / Reports, Source files ---------- */
 const DR = { tok: null, exp: 0, ids: {}, last: 0, lastOk: 0, err: '', checked: null, up: new Set(), ready() { return !!this.tok && Date.now() < this.exp - 60000; }, reset() { this.ids = {}; this.up = new Set(); this.checked = null; this.rootName = ''; } };
+const drKeep = () => { try { sessionStorage.setItem('brt.drtok', JSON.stringify({ t: DR.tok, e: DR.exp })); } catch (e) {} };
+try { const k = JSON.parse(sessionStorage.getItem('brt.drtok') || 'null'); if (k && k.t && k.e > Date.now() + 60000) { DR.tok = k.t; DR.exp = k.e; } } catch (e) {}
+DR.px = null;
+const drShort = () => SV.get().driveFolderId ? 'drive' : 'drive.file';
+async function drPxStatus() { try { if (!/^https?:/.test(location.protocol)) return null; const r = await fetch('/api/drive/status', { cache: 'no-store' }); DR.px = r.ok ? await r.json() : null; } catch (e) { DR.px = null; } return DR.px; }
+async function drPxToken() {
+  const r = await fetch('/api/drive/token', { cache: 'no-store' }), j = await r.json().catch(() => ({}));
+  if (r.status === 401) { if (DR.px) DR.px.connected = false; throw new Error('not_connected'); } if (!j.access_token) throw new Error(j.error || 'Could not get a Google token from the Worker');
+  DR.tok = j.access_token; DR.exp = Date.now() + (+j.expires_in || 3600) * 1000; DR.err = ''; drKeep(); SV.set({ lastConn: Date.now() }); if (DR.px) { DR.px.connected = true; DR.px.scope = j.scope; }
+}
+const drPxOk = () => !!(DR.px && DR.px.configured);
+const drPxScopeOk = () => !DR.px || !DR.px.scope || DR.px.scope === drShort();
+async function drAuto() { if (!SV.get().drive || !drPxOk() || !DR.px.connected || !drPxScopeOk() || DR.ready()) return; try { await drPxToken(); drRefresh(); } catch (e) { drRefresh(); } }
+drPxStatus().then(() => { if (/[?&]drive=connected/.test(location.search)) { try { history.replaceState(null, '', location.pathname); } catch (e) {} SV.set({ drive: true, lastConn: Date.now() }); } drAuto().then(() => { drRefresh(); if (typeof toast === 'function' && DR.ready() && !DR.shown) { DR.shown = 1; } }); });
+setInterval(() => { if (DR.tok && DR.exp - Date.now() < 600000) drAuto(); }, 120000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) drAuto(); });
+let drSilentAt = 0;
+document.addEventListener('pointerdown', () => { const c = SV.get(); if (drPxOk()) { if (c.drive && DR.px.connected && !DR.ready()) drAuto(); return; } if (!c.drive || !c.clientId || !c.lastConn || DR.ready() || Date.now() - drSilentAt < 600000 || !/^https?:/.test(location.protocol)) return; drSilentAt = Date.now(); drConnect().then(() => { drRefresh(); }).catch(() => {}); }, true);
 const svNo = () => String(S.cfg.projectNo || '').trim();
 const drClean = t => String(t).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
-const drProjName = () => drClean(svNo() ? svNo() + ' - ' + svName() : svName());
+const drProjName = () => { const m = SV.get().nameMode || 'name', no = svNo(), nm = svName(), same = !no || no.toLowerCase() === nm.toLowerCase() || nm.toLowerCase().startsWith(no.toLowerCase());
+  return drClean(m === 'no' && no ? no : m === 'both' && !same ? no + ' - ' + nm : nm); };
 const drToday = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const drScope = () => SV.get().driveFolderId ? 'https://www.googleapis.com/auth/drive' : 'https://www.googleapis.com/auth/drive.file';
 const drLoadGsi = () => window.google && google.accounts && google.accounts.oauth2 ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.onload = res; s.onerror = () => rej(new Error('Could not load Google sign-in (offline?)')); document.head.appendChild(s); });
 async function drConnect() {
+  if (!DR.px) await drPxStatus();
+  if (drPxOk()) { if (DR.px.connected && drPxScopeOk()) { try { await drPxToken(); return; } catch (e) { if (e.message !== 'not_connected') throw e; } } location.href = '/api/drive/login?scope=' + drShort(); return new Promise(() => {}); }
   const c = SV.get(); if (!c.clientId) throw new Error('Enter the Google client ID in Setup → Saved projects first.'); if (!/^https?:/.test(location.protocol)) throw new Error('Google sign-in works only on your site address, not on a saved file.');
   await drLoadGsi();
-  return new Promise((res, rej) => { const tc = google.accounts.oauth2.initTokenClient({ client_id: c.clientId, scope: drScope(), callback: r => { if (r.error) rej(new Error(r.error_description || r.error)); else { DR.tok = r.access_token; DR.exp = Date.now() + (+r.expires_in || 3600) * 1000; DR.err = ''; SV.set({ lastConn: Date.now() }); res(); } }, error_callback: e => rej(new Error(e && e.type || 'Google sign-in was closed')) }); tc.requestAccessToken({ prompt: SV.get().lastConn ? '' : 'consent' }); });
+  return new Promise((res, rej) => { const tc = google.accounts.oauth2.initTokenClient({ client_id: c.clientId, scope: drScope(), callback: r => { if (r.error) rej(new Error(r.error_description || r.error)); else { DR.tok = r.access_token; DR.exp = Date.now() + (+r.expires_in || 3600) * 1000; DR.err = ''; drKeep(); SV.set({ lastConn: Date.now() }); res(); } }, error_callback: e => rej(new Error(e && e.type || 'Google sign-in was closed')) }); tc.requestAccessToken({ prompt: SV.get().lastConn ? '' : 'consent' }); });
 }
 async function drApi(path, opt) { const r = await fetch('https://www.googleapis.com' + path, Object.assign({}, opt, { headers: Object.assign({ Authorization: 'Bearer ' + DR.tok }, opt && opt.headers) })); if (r.status === 401) { DR.tok = null; throw new Error('Google Drive sign-in expired: press Reconnect.'); } if (r.status === 404) throw new Error('Google Drive: folder or file not found (404). If you set your own folder, check its link and that you connected with full Drive access.'); if (!r.ok) throw new Error('Google Drive error ' + r.status); return r; }
 const drQ = t => String(t).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -89,9 +110,9 @@ async function drList() { const q = encodeURIComponent("name contains 'BRT_' and
 async function drOpen(id) { const b = await (await drApi('/drive/v3/files/' + id + '?alt=media')).blob(); const rec = await readBundle(new File([b], 'x.brtp')); if (!rec || rec.tool !== 'baseline-review-tool-session') throw new Error('Not a project saved by this tool'); await svRestore(rec); }
 /* status: connected? can it save? can it load? where? */
 function drStatus() {
-  const c = SV.get(), web = /^https?:/.test(location.protocol), ok = DR.ready(), why = !c.drive ? 'Google Drive is switched off (Setup → Saved projects).' : !c.clientId ? 'Add the Google client ID in Setup.' : !web ? 'Open the site address, not the saved file.' : !ok ? (c.lastConn ? 'Sign-in expired: press Reconnect.' : 'Press Connect.') : '';
-  const root = c.driveFolderId ? (DR.rootName ? DR.rootName + ' (your folder)' : 'your folder (link set)') : drClean(c.driveRoot || 'Baseline Review Tool'), can = c.drive && !!c.clientId && web && ok;
-  return { c, web, ok, can, why, conn: !c.drive ? 'Off' : ok ? 'Connected' : c.lastConn ? 'Sign-in expired' : 'Not connected', path: root + ' / ' + (drProjName() || '…') + ' / ' + drToday() };
+  const c = SV.get(), web = /^https?:/.test(location.protocol), ok = DR.ready(), why = !c.drive ? 'Google Drive is switched off (Setup → Saved projects).' : !c.clientId && !drPxOk() ? 'Add the Google client ID in Setup.' : !web ? 'Open the site address, not the saved file.' : !ok ? (drPxOk() ? (DR.px.connected && drPxScopeOk() ? 'Renewing the Google sign-in…' : 'Press Connect once: the Worker then keeps you signed in.') : c.lastConn ? 'Sign-in expired: press Reconnect.' : 'Press Connect.') : '';
+  const root = c.driveFolderId ? (DR.rootName ? DR.rootName + ' (your folder)' : 'your folder (link set)') : drClean(c.driveRoot || 'Baseline Review Tool'), can = c.drive && (!!c.clientId || drPxOk()) && web && ok;
+  return { c, web, ok, can, why, conn: !c.drive ? 'Off' : ok ? 'Connected' : drPxOk() && DR.px.connected ? 'Renewing…' : !drPxOk() && c.lastConn ? 'Sign-in expired' : 'Not connected', path: root + ' / ' + (drProjName() || '…') + ' / ' + drToday() };
 }
 function drStatusHtml(full) {
   const st = drStatus(), dot = (g, t) => `<span class="drdot ${g ? 'g' : 'r'}"></span>${t}`;
@@ -102,9 +123,9 @@ function drStatusHtml(full) {
   <div><small>Saves to</small><b class="drpath">${esc(st.path)}</b></div>
   <div><small>Last saved</small><b>${DR.lastOk ? esc(svDate(DR.lastOk)) : '–'}</b></div></div>
   ${st.why ? `<p class="hint" style="margin:8px 0 0">${esc(st.why)}</p>` : ''}${DR.err ? `<p class="hint" style="margin:6px 0 0;color:#C0392B">${esc(DR.err)}</p>` : ''}
-  ${!svNo() ? `<p class="hint" style="margin:6px 0 0">No project number yet: the folder is named after the project name only. Add it below or in Project setup.</p>` : ''}
+  ${!svNo() ? `<p class="hint" style="margin:6px 0 0"></p>` : ''}
   <div class="actions" style="margin-top:8px;flex-wrap:wrap;gap:8px">${st.c.drive ? `<button class="btn ${st.ok ? '' : 'primary'}" data-sv-act="connect">${st.ok ? 'Reconnect' : (st.c.lastConn ? 'Reconnect' : 'Connect') + ' Google Drive'}</button><button class="btn" data-sv-act="check" ${st.ok ? '' : 'disabled'}>Check the folder</button><button class="btn" data-sv-act="drive-now" ${st.can ? '' : 'disabled'}>Save this project to Drive now</button>${st.ok ? '<button class="btn" data-sv-act="disconnect">Disconnect</button>' : ''}` : '<button class="btn primary" data-go="setup">Set up Google Drive</button>'}</div>
-  ${full ? `<label class="f" style="max-width:340px;margin-top:10px"><span>Project number (names the Drive folder)</span><input type="text" data-sv-no="1" value="${esc(svNo())}" placeholder="e.g. P0076"></label>` : ''}</div>`;
+  ${full ? `<label class="f" style="max-width:340px;margin-top:10px"><span>Project number (optional, used when folder name includes it)</span><input type="text" data-sv-no="1" value="${esc(svNo())}" placeholder="e.g. P0076"></label>` : ''}</div>`;
 }
 function drChip() { const el = $('#tb-drive'); if (!el) return; const st = drStatus(); el.className = 'tbchip tbdrive' + (st.ok ? ' on' : ''); el.style.display = st.c.drive ? '' : 'none'; el.innerHTML = `<span class="drdot ${st.ok ? 'g' : 'r'}"></span>Drive`; el.title = 'Google Drive: ' + st.conn + (st.why ? '. ' + st.why : ''); }
 function drRefresh() { drChip(); if (S.step === 'home') { const b = $('#hm-drive'); if (b) b.innerHTML = drStatusHtml(false); hmFill(); } else if (S.step === 'setup') viewSetup(); }
@@ -145,7 +166,7 @@ async function hmDrop(files) {
   ${ok.length ? `<h3 class="rp-h3">Suggested next steps</h3><div class="actions" style="flex-wrap:wrap;gap:8px">${ok.length === 1 ? b('quick', 'Quick review of this file', 1) : b('rp', 'Find the delay and recover it (oldest → newest)', 1) + b('cmp', 'Check the update')}${ok.length > 2 ? b('pf', 'Triage all ' + ok.length + ' files') : ''}</div>${ok.length > 1 ? `<p class="hint">The oldest data date (${esc(svFd(ok[0].dd))}) is used as the baseline / previous file and the newest (${esc(svFd(ok[ok.length - 1].dd))}) as the current update.</p>` : ''}` : ''}`;
 }
 document.addEventListener('change', e => { const t = e.target; if (t.id === 'hm-files' && t.files.length) hmDrop([...t.files]); if (t.id === 'hm-open' && t.files.length) svOpenFile(t.files[0]);
-  if (t.matches && t.matches('[data-sv]')) { const k = t.dataset.sv; let v = t.type === 'checkbox' ? t.checked : t.type === 'number' ? Math.max(1, +t.value || 20) : t.value.trim(); if (k === 'driveFolderId') { const m = /folders\/([\w-]+)/.exec(v) || /[?&]id=([\w-]+)/.exec(v); v = m ? m[1] : v.replace(/[^\w-]/g, ''); } SV.set({ [k]: v }); if (/^(driveFolderId|driveRoot|clientId|drive)$/.test(k)) { DR.reset(); if (k === 'driveFolderId' || k === 'clientId') { DR.tok = null; SV.set({ lastConn: 0 }); } } drChip(); if (S.step === 'setup') viewSetup(); }
+  if (t.matches && t.matches('[data-sv]')) { const k = t.dataset.sv; let v = t.type === 'checkbox' ? t.checked : t.type === 'number' ? Math.max(1, +t.value || 20) : t.value.trim(); if (k === 'driveFolderId') { const m = /folders\/([\w-]+)/.exec(v) || /[?&]id=([\w-]+)/.exec(v); v = m ? m[1] : v.replace(/[^\w-]/g, ''); } SV.set({ [k]: v }); if (/^(driveFolderId|driveRoot|clientId|drive|nameMode)$/.test(k)) { DR.reset(); if (k === 'driveFolderId' || k === 'clientId') { DR.tok = null; SV.set({ lastConn: 0 }); } } drChip(); if (S.step === 'setup') viewSetup(); }
   if (t.matches && t.matches('[data-sv-no]')) { S.cfg.projectNo = t.value.trim(); DR.ids = {}; autosave(); drRefresh(); } });
 document.addEventListener('click', async e => { const t = e.target.closest && e.target.closest('[data-hm],[data-sv-act],[data-sv-open],[data-sv-del],[data-sv-drive]'); if (!t) return;
   try {
@@ -162,7 +183,7 @@ document.addEventListener('click', async e => { const t = e.target.closest && e.
     if (a === 'connect') { await drConnect(); toast('Google Drive connected', 'ok'); drRefresh(); sessionSaveSoon(); }
     if (a === 'check') { const id = await drPath([drProjName()]); DR.err = ''; DR.checked = Date.now(); toast('Folder OK: ' + drStatus().path.split(' / ').slice(0, 2).join(' / '), 'ok'); drRefresh(); }
     if (a === 'drive-now') { if (!S.cfg.projectName && !(S.rp && S.rp.A)) throw new Error('Nothing to save yet: set a project name or load files first.'); await drSave(); toast('Saved to Google Drive', 'ok'); drRefresh(); }
-    if (a === 'disconnect') { DR.tok = null; DR.reset(); SV.set({ lastConn: 0 }); toast('Google Drive disconnected in this browser', 'ok'); drRefresh(); }
+    if (a === 'disconnect') { if (drPxOk()) { try { await fetch('/api/drive/disconnect', { method: 'POST' }); DR.px.connected = false; } catch (e) {} } DR.tok = null; try { sessionStorage.removeItem('brt.drtok'); } catch (e) {} DR.reset(); SV.set({ lastConn: 0 }); toast('Google Drive disconnected in this browser', 'ok'); drRefresh(); }
     if (a === 'clear') { if (confirm('Delete ALL saved projects from this browser?')) { for (const r of await idb.all()) await idb.del(r.id); S._svRec = null; toast('Saved projects cleared', 'ok'); } }
   } catch (err) { console.error(err); DR.err = err.message; toast(err.message, 'bad'); drRefresh(); } });
 function svCard() {
@@ -174,7 +195,9 @@ function svCard() {
   <label class="sw"><input type="checkbox" data-sv="drive" ${c.drive ? 'checked' : ''}><span>Save my work to Google Drive (off by default)</span></label>
   <div class="aiopts ${c.drive ? '' : 'off'}">
   <div id="st-drive">${drStatusHtml(true)}</div>
+  ${drPxOk() ? `<p class="hint" style="margin:8px 0 0">Google sign-in is handled by your Cloudflare Worker: press Connect once and it stays signed in on every device. The client ID below is not needed.</p>` : ""}
   <div class="grid" style="margin-top:10px"><label class="f"><span>Google client ID (create once in Google Cloud)</span><input type="text" data-sv="clientId" value="${esc(c.clientId)}" placeholder="123456-abc.apps.googleusercontent.com" autocomplete="off"></label>
+  <label class="f"><span>Project folder name</span><select data-sv="nameMode"><option value="name"${(c.nameMode||'name')==='name'?' selected':''}>Project name only</option><option value="both"${c.nameMode==='both'?' selected':''}>Project number - name</option><option value="no"${c.nameMode==='no'?' selected':''}>Project number only</option></select></label>
   <label class="f"><span>Tool folder name in My Drive (created if missing)</span><input type="text" data-sv="driveRoot" value="${esc(c.driveRoot || 'Baseline Review Tool')}"></label>
   <label class="f"><span>OR the link of a folder you made yourself (optional; needs full Drive access when you connect)</span><input type="text" data-sv="driveFolderId" value="${esc(c.driveFolderId || '')}" placeholder="https://drive.google.com/drive/folders/…" autocomplete="off"></label></div>
   <label class="sw"><input type="checkbox" data-sv="driveFiles" ${c.driveFiles !== false ? 'checked' : ''}><span>Also save the source XER files, in &lt;project&gt; / &lt;date&gt; / Source files</span></label>
