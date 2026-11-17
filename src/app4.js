@@ -1,6 +1,6 @@
 /* ===== APP PART 4: events & init ===== */
 function convert(el) { const t = el.dataset.t; if (t === 'bool') return el.checked; if (t === 'num') { const v = parseFloat(el.value); return isNaN(v) ? null : v; } if (t === 'int') { const v = parseInt(el.value, 10); return isNaN(v) ? null : v; } return el.value; }
-const RERENDER = new Set(['weights.engineering', 'weights.procurement', 'weights.construction', 'weights.handover', 'ai.on', 'durationValue', 'durationUnit', 'reportingPeriod']);
+const RERENDER = new Set(['weights.engineering', 'weights.procurement', 'weights.construction', 'weights.handover', 'ai.on', 'ai.modelAll', 'durationValue', 'durationUnit', 'reportingPeriod']);
 function bindAll() {
   document.addEventListener('click', async e => {
     const t = e.target, q = s => t.closest(s);

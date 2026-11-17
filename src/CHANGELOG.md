@@ -1,3 +1,6 @@
+## v9.6 (2026-11-17)
+- Setup → AI: new choice "Claude model for all AI steps": Automatic (each step keeps its recommended model), Haiku 5.5, Sonnet 5.5 or Opus 5.5. A model typed for one step in the table still wins for that step. The model list now offers Fable 5.2 instead of 5.1.
+
 ## v9.5 (2026-11-17)
 - Google Drive signs in automatically through your Cloudflare Worker: press Connect once, the Worker keeps the Google refresh token (in Cloudflare KV, never in the browser) and gives the tool a fresh short-lived token whenever it needs one, on every device. Needs Worker secrets GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET. Without them the tool falls back to the browser sign-in of v9.4.
 

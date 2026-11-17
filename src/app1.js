@@ -8,7 +8,7 @@ const LS = { get(k, d) { try { const v = localStorage.getItem(k); return v == nu
 
 const S = { cfg: E.defaultCfg(), M: null, out: null, step: 'setup', files: {}, history: [], commentNo: {}, ui: { filter: 'fail' }, raw: {} };
 S.cfg.eid = LS.get('brt.eid', []);
-(function () { const a = LS.get('brt.ai', null); if (a) { S.cfg.ai.on = !!a.on; S.cfg.ai.cmp = a.cmp === true; S.cfg.ai.rp = a.rp === true; S.cfg.ai.proxy = a.proxy !== false; S.cfg.ai.remember = !!a.remember; S.cfg.ai.key = a.remember ? (a.key || '') : ''; S.cfg.ai.models = a.models || {}; S.cfg.ai.prices = a.prices; } })();
+(function () { const a = LS.get('brt.ai', null); if (a) { S.cfg.ai.on = !!a.on; S.cfg.ai.cmp = a.cmp === true; S.cfg.ai.rp = a.rp === true; S.cfg.ai.proxy = a.proxy !== false; S.cfg.ai.remember = !!a.remember; S.cfg.ai.key = a.remember ? (a.key || '') : ''; S.cfg.ai.models = a.models || {}; S.cfg.ai.modelAll = /^claude-(haiku|sonnet|opus)-5-5$/.test(a.modelAll || '') ? a.modelAll : ''; S.cfg.ai.prices = a.prices; } })();
 
 function toast(msg, kind) {
   let t = $('#toast'); t.textContent = msg; t.className = 'show ' + (kind || ''); clearTimeout(toast._t); toast._t = setTimeout(() => t.className = '', 4200);
@@ -102,9 +102,9 @@ const AI_TASKS = [
   { id: 'bb_prod', label: 'Baseline builder – productivity rates for gaps', def: 'claude-sonnet-5-5' },
   { id: 'bb_final', label: 'Baseline builder – final review', def: 'claude-sonnet-5-5' }
 ];
-const MODEL_LIST = ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5', 'claude-fable-5-1'];
+const MODEL_LIST = ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5', 'claude-fable-5-2'];
 const PRICE_DEF = { haiku: [1, 5], sonnet: [3, 15], opus: [5, 25], fable: [5, 25] }; // USD per million tokens (in/out) – editable
-function modelFor(task) { return (S.cfg.ai.models && S.cfg.ai.models[task]) || AI_TASKS.find(t => t.id === task).def; }
+function modelFor(task) { return (S.cfg.ai.models && S.cfg.ai.models[task]) || S.cfg.ai.modelAll || AI_TASKS.find(t => t.id === task).def; }
 function priceFor(model) { const p = S.cfg.ai.prices || PRICE_DEF; const k = Object.keys(p).find(k => model.includes(k)); return p[k] || [3, 15]; }
 function estimateCost(task, chars, outTokens) { const m = modelFor(task), p = priceFor(m); return ((chars / 4) * p[0] + (outTokens || 1500) * p[1]) / 1e6; }
 function aiReady() { if (!S.cfg.ai.on) { toast('AI is switched off for this project (Setup → AI).', 'warn'); return false; } if (!aiViaProxy() && !S.cfg.ai.key) { toast('Enter your Claude API key in Setup → AI (or set up the server proxy).', 'warn'); return false; } if (!S.cfg.ai.consent) { toast('Tick the consent box in Setup → AI first: it states what is sent to Anthropic.', 'warn'); return false; } return true; }
@@ -120,7 +120,7 @@ async function callClaude(task, system, content, maxTokens) {
   return j.content.map(c => c.text || '').join('');
 }
 function parseJson(txt) { const m = /```(?:json)?\s*([\s\S]*?)```/.exec(txt); const s = m ? m[1] : txt; const a = s.indexOf('{'), b = s.lastIndexOf('}'); const a2 = s.indexOf('['), b2 = s.lastIndexOf(']'); try { if (a2 >= 0 && (a < 0 || a2 < a)) return JSON.parse(s.slice(a2, b2 + 1)); return JSON.parse(s.slice(a, b + 1)); } catch (e) { throw new Error('Claude did not return valid JSON'); } }
-function saveAiSettings() { LS.set('brt.ai', { on: S.cfg.ai.on, cmp: S.cfg.ai.cmp === true, rp: S.cfg.ai.rp === true, proxy: S.cfg.ai.proxy !== false, remember: !!S.cfg.ai.remember, key: S.cfg.ai.remember ? S.cfg.ai.key : '', models: S.cfg.ai.models, prices: S.cfg.ai.prices }); }
+function saveAiSettings() { LS.set('brt.ai', { on: S.cfg.ai.on, cmp: S.cfg.ai.cmp === true, rp: S.cfg.ai.rp === true, proxy: S.cfg.ai.proxy !== false, remember: !!S.cfg.ai.remember, key: S.cfg.ai.remember ? S.cfg.ai.key : '', models: S.cfg.ai.models, modelAll: S.cfg.ai.modelAll || '', prices: S.cfg.ai.prices }); }
 
 /* ---------- profile (settings & confirmations per project) ---------- */
 function toProfile() {
