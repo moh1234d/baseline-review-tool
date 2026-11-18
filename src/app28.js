@@ -100,7 +100,7 @@ function rpAiPanel(D, R, T) {
 /* AI marks on the lever cards and delay-train cars (added after the page is drawn) */
 function rpAiDecorate() {
   if (!rpAiOn()) return; const D = trSt('rp'), R = S.rp, rv = D && D.train ? rpAiRev(D, R) : null; if (!rv) return;
-  document.querySelectorAll('.rp-lc [data-trlev]').forEach(cb => { const i = +String(cb.dataset.trlev).split(':')[1], x = rv.levers.find(q => +q.lever === i); if (!x || x.verdict === 'sound') return; const b = cb.parentElement.querySelector('b'); if (!b) return; const s = document.createElement('span'); s.className = 'rpai-tag ' + (x.verdict === 'illogical' ? 'bad' : 'warn'); s.textContent = 'AI: ' + (x.verdict === 'illogical' ? 'illogical?' : 'check'); s.title = String(x.reason || ''); b.appendChild(s); });
+  document.querySelectorAll('.rpb [data-trlev]').forEach(cb => { const i = +String(cb.dataset.trlev).split(':')[1], x = rv.levers.find(q => +q.lever === i); if (!x || x.verdict === 'sound') return; const b = cb.parentElement.querySelector('b'); if (!b) return; const s = document.createElement('span'); s.className = 'rpai-tag ' + (x.verdict === 'illogical' ? 'bad' : 'warn'); s.textContent = 'AI: ' + (x.verdict === 'illogical' ? 'illogical?' : 'check'); s.title = String(x.reason || ''); b.appendChild(s); });
   document.querySelectorAll('.tr-car[data-rpcar]').forEach(el => { const x = rv.causes.find(q => +q.car - 1 === +el.dataset.rpcar); if (!x || !RPAI_CAUSES[x.cause] || x.cause === 'unknown') return; const s = document.createElement('i'); s.className = 'rpai-tag'; s.textContent = 'AI: ' + RPAI_CAUSES[x.cause]; s.title = String(x.reason || ''); el.appendChild(s); });
 }
 async function rpAiXlsx() {

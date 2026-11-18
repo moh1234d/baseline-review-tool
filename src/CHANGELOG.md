@@ -1,3 +1,6 @@
+## v9.7 (2026-11-18)
+- Recovery planner: new mitigation lever cards. Each card shows the days saved big on the right, three small tiles (Who, Changes, Effect) and a short before → after table of the first three changes. Everything else (why, full rule, identical copies, the full list with the exclude button) is under All details. The switch is the only click target; the open/closed state of All details is kept.
+
 ## v9.6 (2026-11-17)
 - Setup → AI: new choice "Claude model for all AI steps": Automatic (each step keeps its recommended model), Haiku 5.5, Sonnet 5.5 or Opus 5.5. A model typed for one step in the table still wins for that step. The model list now offers Fable 5.2 instead of 5.1.
 
