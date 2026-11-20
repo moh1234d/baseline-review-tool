@@ -1,3 +1,8 @@
+## v9.15 (2026-11-20)
+- Recovery planner: stage boxes (Cards, Network, Parallel plots) show what each number is (delay added here / recovered here), plus the stage duration, the lowest total float of its open activities (from P6) and the slip at the end of the stage. Three card designs to choose from (A tiles, B labelled rows, C compact footer), also in Setup.
+- Recovery planner: Expand button fills the page with the delay chart; Collapse or Esc returns.
+- Recovery planner, Parallel plots: the longest path is now marked (red band, LONGEST PATH tag, red line to the finish). The other paths no longer end in a dark box with a large slip that looked like a project delay: the end box shows the float the path still has, with its own slip in small text marked as not a project delay, and each path's title says how much it can slip before it delays the finish.
+
 ## v9.14 (2026-11-20)
 - Recovery planner: every chart can be resized. The name column of the logic Gantt and of the finish chart has a drag bar (dashed line, drag it sideways) and the Chart labels slider; long activity names now wrap onto two lines instead of being cut. New Chart zoom slider (100 to 250%) enlarges all charts and shapes (Gantt, network, plots, finish chart, waterfall) with sideways scrolling. Also in Setup.
 
