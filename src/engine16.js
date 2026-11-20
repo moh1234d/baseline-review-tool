@@ -233,3 +233,48 @@ E.trainRounds = function (B, train, start, o) {
   const rN = calc(), nAct = pre.rem.size, nLink = pre.links.size;
   return { rounds, total: cum, slip, residual: Math.max(0, slip - cum), stop, finish: rN.finish, base: r0.finish, nAct, nLink, pre };
 };
+
+/* ===== v9.12: P6 check report. P6 stores its own dates in the file; the tool recalculates the same file without looking at them, and the two are compared activity by activity. ===== */
+E.p6Check = function (M, o) {
+  o = o || {}; const r = E.recalc(M, { all: true }), raw = new Map(); for (const x of ((M.T && M.T.TASK && M.T.TASK.r) || [])) raw.set(x.task_id, x);
+  const nd = t => t.status !== 'TK_Complete' && t.type !== 'TT_LOE' && t.type !== 'TT_WBS', day = m => m == null ? null : Math.floor(m / 1440), so = M.so || {}, P = M.proj || {};
+  const rows = new Map(), st = { n: 0, sSame: 0, s1: 0, sMore: 0, fSame: 0, f1: 0, fMore: 0 }; let p6fin = -Infinity;
+  for (const t of M.tasks) { if (!nd(t) || t.ef == null || !r.ef.has(t.id)) continue; const act = t.status === 'TK_Active';
+    /* start: for work in progress the start of the REMAINING work (P6 "remaining early start") */
+    const p6s = act ? (t.rsM != null ? day(t.rsM) : null) : t.es, ts = act ? day(r.rsM.get(t.id)) : r.es.get(t.id), dS = p6s == null || ts == null ? 0 : ts - p6s, dF = r.ef.get(t.id) - t.ef;
+    st.n++; if (!dS) st.sSame++; else if (Math.abs(dS) <= 1) st.s1++; else st.sMore++; if (!dF) st.fSame++; else if (Math.abs(dF) <= 1) st.f1++; else st.fMore++; if (t.ef > p6fin) p6fin = t.ef;
+    rows.set(t.id, { t, dS, dF, p6s, ts, p6f: t.ef, tf: r.ef.get(t.id), diff: !!(dS || dF) }); }
+  /* roots: the first activity where a difference starts (all its unfinished predecessors agree) */
+  const diffs = [...rows.values()].filter(x => x.diff), rootOf = new Map();
+  const cause = x => { const t = x.t, w = raw.get(t.id) || {}, c = [];
+    if (t.pre.some(l => (l.type === 'SS' || l.type === 'SF') && l.from.status === 'TK_Active')) c.push('follows an in-progress activity through a start-to-start link');
+    if (t.status === 'TK_Active') c.push('in progress: the start of its remaining work differs');
+    if (t.cstrType || t.cstrType2) c.push('has a constraint (' + String(t.cstrType || t.cstrType2).replace('CS_', '') + ')');
+    if (w.suspend_date || w.resume_date) c.push('suspended and resumed');
+    if (t.type === 'TT_Rsrc') c.push('resource dependent (follows resource calendars)');
+    if (w.external_early_start_date) c.push('has an external early start date');
+    if (t.pre.some(l => l.from.clndr !== t.clndr && nd(l.from))) c.push('predecessor on a different calendar');
+    if (t.pre.some(l => l.from.type === 'TT_LOE')) c.push('follows a level of effort');
+    return c.length ? c[0] + (c.length > 1 ? ' (also: ' + c.slice(1).join('; ') + ')' : '') : 'not identified'; };
+  const find = (x, depth) => { if (rootOf.has(x.t.id)) return rootOf.get(x.t.id); let up = null; if (depth < 400) for (const l of x.t.pre) { const q = rows.get(l.from.id); if (q && q.diff) { up = q; break; } } const rt = up ? find(up, depth + 1) : x; rootOf.set(x.t.id, rt); return rt; };
+  for (const x of diffs) find(x, 0);
+  const roots = new Map(); for (const x of diffs) { const rt = rootOf.get(x.t.id); let g = roots.get(rt.t.id); if (!g) roots.set(rt.t.id, g = { root: rt, cause: cause(rt), n: 0, worst: 0 }); g.n++; g.worst = Math.max(g.worst, Math.abs(x.dF), Math.abs(x.dS)); }
+  const rootList = [...roots.values()].sort((a, b) => b.n - a.n || b.worst - a.worst), byCause = new Map(); for (const g of rootList) { const k = g.cause.replace(/ \(also:.*$/, ''); const c = byCause.get(k) || { cause: k, roots: 0, acts: 0 }; c.roots++; c.acts += g.n; byCause.set(k, c); }
+  /* longest path: P6's flag against the tool's own (every tied driving link, back from the finish) */
+  const flag = t => (raw.get(t.id) || {}).driving_path_flag, hasFlag = M.tasks.some(t => flag(t) === 'Y'), p6lp = new Set(M.tasks.filter(t => nd(t) && flag(t) === 'Y').map(t => t.id)), loeLp = M.tasks.filter(t => t.status !== 'TK_Complete' && t.type === 'TT_LOE' && flag(t) === 'Y');
+  const tlp = new Set(), stack = M.tasks.filter(t => nd(t) && r.rsM.has(t.id) && r.efM.get(t.id) >= r.finishM - 1); while (stack.length) { const t = stack.pop(); if (tlp.has(t.id)) continue; tlp.add(t.id); for (const l of (r.drvAll.get(t.id) || [])) if (nd(l.from) && !tlp.has(l.from.id)) stack.push(l.from); }
+  let both = 0, onlyP6 = [], onlyTool = []; for (const id of p6lp) if (tlp.has(id)) both++; else onlyP6.push(id); for (const id of tlp) if (!p6lp.has(id)) onlyTool.push(id);
+  const byId = new Map(M.tasks.map(t => [t.id, t]));
+  /* entries that make P6 behave in ways planners do not expect */
+  const part = M.tasks.filter(t => nd(t) && !t.isMile && t.remHr != null && (() => { const fr = (t.remHr / ((M.cal[t.clndr] || {}).dayHr || 8)) % 1; return fr > 0.02 && fr < 0.98; })());
+  let noCrew = /(?!)/; try { noCrew = new RegExp((o.noCrewWords || E.TRAIN_DEFAULTS.noCrewWords), 'i'); } catch (e) { }
+  const timeRel = M.tasks.filter(t => nd(t) && !t.isMile && tlp.has(t.id) && noCrew.test(t.name) && (t.remWd || 0) >= 20);
+  const beforeDD = M.dataDate == null ? [] : M.tasks.filter(t => nd(t) && t.status === 'TK_NotStart' && t.es != null && t.es < M.dataDate);
+  /* was the file scheduled after its last change? */
+  const ls = E.pm(P.last_schedule_date), stale = ls == null ? null : ((M.T && M.T.TASK && M.T.TASK.r) || []).filter(x => x.status_code !== 'TK_Complete' && E.pm(x.update_date) != null && E.pm(x.update_date) > ls + 15).length;
+  const dFin = st.n ? r.finish - p6fin : 0, pF = st.n ? st.fSame / st.n : 1, verdict = !st.n ? 'none' : dFin === 0 && pF >= 0.995 ? 'match' : Math.abs(dFin) <= 1 && pF >= 0.95 ? 'minor' : 'no';
+  const lagMode = { rcal_Predecessor: 'predecessor calendar', rcal_Successor: 'successor calendar', rcal_24Hour: '24-hour calendar', rcal_ProjDefault: 'project default calendar' }[so.sched_calendar_on_relationship_lag] || (so.sched_calendar_on_relationship_lag || 'not stated');
+  const settings = [['Data date', P.last_recalc_date || ''], ['Last scheduled in P6', P.last_schedule_date || 'not stated'], ['Out-of-sequence progress', so.sched_retained_logic === 'N' ? (so.sched_progress_override === 'Y' ? 'Progress override' : 'Actual dates') : 'Retained logic'], ['Calendar for lags', lagMode], ['Expected finish dates', so.sched_use_expect_end_flag === 'Y' ? 'Used' : 'Not used'], ['Critical activities defined by', P.critical_path_type === 'CT_DrivPath' ? 'Longest path' : 'Total float ≤ ' + (parseFloat(P.critical_drtn_hr_cnt) || 0) + ' h'], ['Open ends made critical', so.sched_open_critical_flag === 'Y' ? 'Yes' : 'No'], ['Multiple longest paths', so.enable_multiple_longest_path_calc === 'Y' ? 'Yes' : 'No']];
+  return { verdict, st, finish: r.finish, p6fin, dFin, diffs, rootList, byCause: [...byCause.values()].sort((a, b) => b.acts - a.acts), rootOf, lp: { hasFlag, p6: p6lp.size, tool: tlp.size, both, onlyP6: onlyP6.map(id => byId.get(id)), onlyTool: onlyTool.map(id => byId.get(id)), loe: loeLp }, part, timeRel, beforeDD, stale, settings,
+    notChecked: ['Total float and late dates (the tool does not calculate its own backward pass yet)', 'Resource levelling and resource-dependent calendars', 'Suspend and resume dates', 'Activities already completed (their actual dates are taken as they are)', 'Whether the logic itself is right: this report only checks that the tool calculates the same dates as P6 from the same logic'] };
+};

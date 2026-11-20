@@ -49,7 +49,7 @@ E.recalc = function (M, o) {
   const dayS = (cal, day) => { for (let g = 0, d = day; g < 400; g++, d++) { const w = wins(cal, d); if (w.length) return d * 1440 + w[0]; } return day * 1440; }, dayE = (cal, day) => { for (let g = 0, d = day; g < 400; g++, d--) { const w = wins(cal, d); if (w.length) return d * 1440 + w[w.length - 1][1]; } return day * 1440 + 1440; };
   const remMin = t => { if (o.rem && o.rem.has(t.id)) return o.rem.get(t.id) * (calOf(t).dayHr || 8) * 60; const raw = o.raw && o.raw.get(t.code); if (raw) { const h = parseFloat(raw.remain_drtn_hr_cnt); if (!isNaN(h)) return h * 60; } if (t.remHr != null) return t.remHr * 60; return (t.remWd != null ? t.remWd : (t.durWd || 0)) * (calOf(t).dayHr || 8) * 60; };
   const lagHrOf = (l, c) => c === l ? (l.lagHr != null ? l.lagHr : (l.lagWd || 0) * (calOf(l.from).dayHr || 8)) : (c.lagWd || 0) * (calOf(l.from).dayHr || 8);
-  const inc = M.tasks.filter(t => t.status !== 'TK_Complete' && t.type !== 'TT_LOE' && t.type !== 'TT_WBS'), S = new Map(), F = new Map(), RS = new Map(), drv = new Map();
+  const inc = M.tasks.filter(t => t.status !== 'TK_Complete' && t.type !== 'TT_LOE' && t.type !== 'TT_WBS'), S = new Map(), F = new Map(), RS = new Map(), drv = new Map(), drvAll = new Map();
   for (const t of M.tasks) if (t.status === 'TK_Complete') { const c = calOf(t); S.set(t.id, t.asM != null ? t.asM : t.es != null ? dayS(c, t.es) : null); F.set(t.id, t.afM != null ? t.afM : t.ef != null ? dayE(c, t.ef) : null); }
   const indeg = new Map(), ids = new Set(inc.map(t => t.id)); for (const t of inc) indeg.set(t.id, 0); for (const t of inc) for (const l of t.pre) if (ids.has(l.from.id)) indeg.set(t.id, indeg.get(t.id) + 1);
   const q = inc.filter(t => !indeg.get(t.id)), order = []; while (q.length) { const t = q.pop(); order.push(t); for (const l of t.succ) { if (!ids.has(l.to.id)) continue; const k = indeg.get(l.to.id) - 1; indeg.set(l.to.id, k); if (!k) q.push(l.to); } }
@@ -58,21 +58,25 @@ E.recalc = function (M, o) {
   const dd = M.ddM != null ? M.ddM : M.dataDate != null ? M.dataDate * 1440 + (M.ddNext ? 1439 : 0) : null;
   const cs = (t, k) => { const ty = String(k === 2 ? t.cstrType2 || '' : t.cstrType || ''), m = k === 2 ? (t.cstrM2 != null ? t.cstrM2 : t.cstrDate2 != null ? t.cstrDate2 * 1440 : null) : (t.cstrM != null ? t.cstrM : t.cstrDate != null ? t.cstrDate * 1440 : null); return m == null ? null : /^CS_(MSO|MSOA|MANDSTART)$/i.test(ty) ? ['s', m] : /^CS_(MEO|MEOA|MANDFIN)$/i.test(ty) ? ['f', m] : null; };
   for (const t of order) { const cal = calOf(t), rem = t.isMile ? 0 : remMin(t), act = t.status === 'TK_Active', sm = t.isMile && !t.isFinMile; let sc = dd != null ? dd : (t.es != null ? t.es * 1440 : 0), fc = -Infinity, ds = null, df = null;
+    const all = o.all ? [] : null;
     for (const k of [1, 2]) { const c = cs(t, k); if (c && c[0] === 's') sc = Math.max(sc, c[1]); if (c && c[0] === 'f') fc = Math.max(fc, c[1]); }
     for (const l of t.pre) { const p = l.from, ps = S.get(p.id), pe = F.get(p.id); if (ps == null || pe == null) continue; const pdone = !ids.has(p.id); if (pdone && p.status !== 'TK_Complete') continue;
       for (const c of ((o.links && o.links.get(l)) || [l])) { const h = lagHrOf(l, c), ty = c.type;
-        if (ty === 'FS') { if (act && !retained) continue; const x = lag(p, t, pe, h); if (x > sc) { sc = x; ds = l; } }
-        else if (ty === 'SS') { if (act) continue; /* a predecessor in progress releases its SS successor when its REMAINING work starts (retained logic only; checked against P6) */ const pr = RS.get(p.id), x = Math.max(lag(p, t, ps, h), pr != null && retained && p.status === 'TK_Active' ? pr : -Infinity); if (x > sc) { sc = x; ds = l; } }
-        else { const x = lag(p, t, ty === 'FF' ? pe : ps, h); if (x > fc) { fc = x; df = l; } } } }
+        if (ty === 'FS') { if (act && !retained) continue; const x = lag(p, t, pe, h); if (all) all.push([x, l, 's']); if (x > sc) { sc = x; ds = l; } }
+        else if (ty === 'SS') { /* v9.12: with retained logic the remaining work of an activity in progress still waits for its SS predecessor to start (checked against P6); with progress override it does not */ if (act && !retained) continue; /* a predecessor in progress releases its SS successor when its REMAINING work starts (retained logic only; checked against P6) */ const pr = RS.get(p.id), x = Math.max(lag(p, t, ps, h), pr != null && retained && p.status === 'TK_Active' ? pr : -Infinity); if (all) all.push([x, l, 's']); if (x > sc) { sc = x; ds = l; } }
+        else { const x = lag(p, t, ty === 'FF' ? pe : ps, h); if (all) all.push([x, l, 'f']); if (x > fc) { fc = x; df = l; } } } }
     let s, f;
     if (t.isFinMile) { s = fwdFin(cal, Math.max(sc, fc)); f = s; if (fc > sc) ds = df; }
     else if (sm) { s = fwd(cal, Math.max(sc, fc)); f = s; if (fc > sc) ds = df; }
     else { s = fwd(cal, sc); f = addW(cal, s, rem); if (fc > f + EPS) { const s2 = subW(cal, fc, rem); if (s2 > s) { s = fwd(cal, s2); f = rem > EPS ? addW(cal, s, rem) : s; ds = df; } } }
+    const RSv = s;
     if (useEE && t.eeM != null && !t.isMile) f = Math.max(s, t.eeM); else if (useEE && t.ee != null && t.eeM == null && !t.isMile) f = Math.max(s, dayE(cal, t.ee));
+    /* o.all: every link that drives this activity (ties included), for the longest-path check */
+    if (all) { const finGov = !t.isMile && df && ds === df; drvAll.set(t.id, all.filter(q => t.isFinMile ? Math.abs(fwdFin(cal, q[0]) - s) < 1 : t.isMile ? Math.abs(fwd(cal, q[0]) - s) < 1 : finGov ? q[2] === 'f' && Math.abs(q[0] - fc) < 1 : q[2] === 's' && Math.abs(fwd(cal, q[0]) - RSv) < 1).map(q => q[1])); }
     RS.set(t.id, s); S.set(t.id, act && t.asM != null ? t.asM : act && t.es != null ? dayS(cal, t.es) : s); F.set(t.id, f); drv.set(t.id, ds); }
   /* day numbers for the rest of the tool: a finish at midnight belongs to the day that just ended */
   const es = new Map(), ef = new Map(), dS = m => Math.floor(m / 1440), dF = m => Math.floor((m - EPS) / 1440); let fin = -Infinity, finM = -Infinity;
   for (const t of M.tasks) { if (t.status === 'TK_Complete') { es.set(t.id, t.es); ef.set(t.id, t.ef); continue; } const a = S.get(t.id), b = F.get(t.id); if (a == null || b == null || !ids.has(t.id) || !RS.has(t.id)) continue;
     es.set(t.id, t.status === 'TK_Active' && t.es != null ? t.es : dS(a)); const fd = b - a < EPS && !(t.status === 'TK_Active') ? dS(b) : dF(b); ef.set(t.id, Math.max(fd, dS(RS.get(t.id)) <= fd ? fd : dS(b))); if (ef.get(t.id) > fin) fin = ef.get(t.id); if (b > finM) finM = b; }
-  return { es, ef, finish: fin, finishM: finM, esM: S, efM: F, rsM: RS, drv, unscheduled: inc.length - order.length };
+  return { es, ef, finish: fin, finishM: finM, esM: S, efM: F, rsM: RS, drv, drvAll, unscheduled: inc.length - order.length };
 };

@@ -1,3 +1,7 @@
+## v9.12 (2026-11-20)
+- Recovery planner: P6 check report. The tool recalculates the update without looking at P6's dates and compares, activity by activity: project finish, start dates, finish dates and the longest path against P6's own flag; a verdict; how the file was scheduled in P6; every difference traced to where it starts, with the likely cause; entries that make P6 behave unexpectedly (part-day durations, time-related activities on the longest path, level of effort flagged on the longest path); a warning when the file was changed after it was last scheduled; what was not checked (total float). Excel download with the full lists.
+- Recalculation: with retained logic the remaining work of an activity in progress still waits for its start-to-start predecessor (checked against P6).
+
 ## v9.11 (2026-11-20)
 - The what-if recalculation now works by the hour, as P6 does: calendar working hours (shifts), lags in working hours on the calendar the file sets, exact data date time, finish constraints (finish on, finish on or after, mandatory finish) as well as start constraints. Checked against the dates stored by P6 in two real updates: the project finish is identical in both, and 10,548 of 10,549 and 9,609 of 9,746 remaining activity finish dates are identical.
 - Recovery in rounds follows the exact driving link of each activity from the recalculation.
