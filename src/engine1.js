@@ -25,6 +25,8 @@ E.pd = s => { // 'YYYY-MM-DD HH:MM' -> day number (days since 1970, integer) or 
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s); if (!m) return null;
   return Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3]) / MS);
 };
+/* v9.11: 'YYYY-MM-DD HH:MM' -> minutes since 1970 (P6 schedules by the hour; the what-if recalculation now does too) */
+E.pm = s => { if (!s) return null; const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?/.exec(s); if (!m) return null; return Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3]) / MS) * 1440 + (m[4] ? +m[4] * 60 + +m[5] : 0); };
 E.dayToStr = d => d == null ? '' : new Date(d * MS).toISOString().slice(0, 10);
 E.dayToDate = d => new Date(d * MS);
 E.strToDay = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3]) / MS) : null; };
@@ -39,14 +41,17 @@ E.parseCalendar = function (data) {
   const iEx = d.indexOf('Exceptions()');
   const secDow = iEx >= 0 ? d.slice(0, iEx) : d;
   const parts = secDow.split(/\(0\|\|([1-7])\(\)\(/);
-  for (let i = 1; i < parts.length; i += 2) out.dow[+parts[i]] = /s\|/.test(parts[i + 1]);
+  /* v9.11: the working hours of each day (shifts), in minutes from midnight */
+  const win = txt => { const w = [], rx = /\((?:f\|(\d+):(\d+)\|s\|(\d+):(\d+)|s\|(\d+):(\d+)\|f\|(\d+):(\d+))\)/g; let m; while ((m = rx.exec(txt))) { const st = m[3] != null ? +m[3] * 60 + +m[4] : +m[5] * 60 + +m[6]; let en = m[1] != null ? +m[1] * 60 + +m[2] : +m[7] * 60 + +m[8]; if (en <= st) en = 1440; w.push([st, en]); } return w.sort((x, y) => x[0] - y[0]); };
+  out.dowW = {}; out.exW = new Map();
+  for (let i = 1; i < parts.length; i += 2) { out.dow[+parts[i]] = /s\|/.test(parts[i + 1]); out.dowW[+parts[i]] = win(parts[i + 1]); }
   for (let k = 1; k <= 7; k++) if (out.dow[k] === undefined) out.dow[k] = false;
   if (iEx >= 0) {
     const sec = d.slice(iEx);
     const ps = sec.split(/\(0\|\|\d+\(d\|(\d+)\)\(/);
     for (let i = 1; i < ps.length; i += 2) {
       const serial = +ps[i]; const day = serial - 25569;
-      out.ex.set(day, /s\|/.test(ps[i + 1].split(/\(0\|\|\d+\(d\|/)[0]));
+      out.ex.set(day, /s\|/.test(ps[i + 1].split(/\(0\|\|\d+\(d\|/)[0])); out.exW.set(day, win(ps[i + 1].split(/\(0\|\|\d+\(d\|/)[0]));
     }
   }
   out.wdw = Object.values(out.dow).filter(Boolean).length;
@@ -63,7 +68,7 @@ E.buildModel = function (T) {
   for (const n of ['CALENDAR', 'PROJWBS', 'RSRC', 'TASKPRED', 'TASKRSRC']) if (!T[n]) T[n] = { f: [], r: [] };
   const M = { T };
   const P = T.PROJECT.r[0]; M.proj = P;
-  M.dataDate = E.pd(P.last_recalc_date); /* v9.10: a data date stamped in the afternoon (e.g. 17:00) means that day is spent: remaining work starts the next day */ { const m = /\s(\d{1,2}):/.exec(String(P.last_recalc_date || '')); M.ddNext = !!(m && +m[1] >= 12); }
+  M.dataDate = E.pd(P.last_recalc_date); M.ddM = E.pm(P.last_recalc_date); /* v9.10: a data date stamped in the afternoon (e.g. 17:00) means that day is spent: remaining work starts the next day */ { const m = /\s(\d{1,2}):/.exec(String(P.last_recalc_date || '')); M.ddNext = !!(m && +m[1] >= 12); }
   M.planStart = E.pd(P.plan_start_date); M.planEnd = E.pd(P.scd_end_date || P.plan_end_date);
   M.so = (T.SCHEDOPTIONS && T.SCHEDOPTIONS.r[0]) || {};
   M.cal = {};
@@ -108,6 +113,7 @@ E.buildModel = function (T) {
       durWd: wdDur, remWd: hr(t.remain_drtn_hr_cnt) == null ? null : hr(t.remain_drtn_hr_cnt) / cal.dayHr, durCal: wdDur == null ? null : wdDur * k, tfWd: wdTF, tfCal: wdTF == null ? null : wdTF * k,
       es: E.pd(t.act_start_date) != null ? E.pd(t.act_start_date) : E.pd(t.early_start_date), ef: E.pd(t.act_end_date) != null ? E.pd(t.act_end_date) : E.pd(t.early_end_date), ts: E.pd(t.target_start_date), te: E.pd(t.target_end_date),
       as: E.pd(t.act_start_date), af: E.pd(t.act_end_date), cstrType: t.cstr_type, cstrDate: E.pd(t.cstr_date), ee: E.pd(t.expect_end_date), cstrType2: t.cstr_type2, cstrDate2: E.pd(t.cstr_date2),
+      asM: E.pm(t.act_start_date), afM: E.pm(t.act_end_date), esM: E.pm(t.early_start_date), efM: E.pm(t.early_end_date), rsM: E.pm(t.restart_date), cstrM: E.pm(t.cstr_date), cstrM2: E.pm(t.cstr_date2), eeM: E.pm(t.expect_end_date), remHr: hr(t.remain_drtn_hr_cnt),
       status: t.status_code, codes: tcode[t.task_id] || {}, pre: [], succ: [], asg: [], cat: null
     };
     o.wbsPath = M.wbs[o.wbs] ? M.wbs[o.wbs].pathStr : '';
@@ -121,7 +127,7 @@ E.buildModel = function (T) {
     const lagHr = parseFloat(p.lag_hr_cnt || '0');
     const cal = M.cal[a.clndr] || { dayHr: 8, wdw: 6 };
     const lagWd = lagHr / cal.dayHr;
-    const l = { from: a, to: b, type: p.pred_type.replace('PR_', ''), lagWd, lagCal: lagWd * 7 / (cal.wdw || 6) };
+    const l = { from: a, to: b, type: p.pred_type.replace('PR_', ''), lagWd, lagHr, lagCal: lagWd * 7 / (cal.wdw || 6) };
     M.links.push(l); a.succ.push(l); b.pre.push(l);
   }
   // assignments

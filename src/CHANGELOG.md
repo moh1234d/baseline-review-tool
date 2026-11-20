@@ -1,3 +1,8 @@
+## v9.11 (2026-11-20)
+- The what-if recalculation now works by the hour, as P6 does: calendar working hours (shifts), lags in working hours on the calendar the file sets, exact data date time, finish constraints (finish on, finish on or after, mandatory finish) as well as start constraints. Checked against the dates stored by P6 in two real updates: the project finish is identical in both, and 10,548 of 10,549 and 9,609 of 9,746 remaining activity finish dates are identical.
+- Recovery in rounds follows the exact driving link of each activity from the recalculation.
+- Check against P6 also counts the activities with a part-day remaining duration (their successors start the same day in P6).
+
 ## v9.10 (2026-11-20)
 - What-if recalculation checked against the dates P6 stored in two real files, and corrected: with progress override the finish of in-progress work is still held by its finish-type links (FF, SF); a data date stamped in the afternoon means remaining work starts the next day (finish milestones can still fall on the data date); a completed predecessor still holds its successor through a lag; start and finish milestones fall on the same day P6 shows; SF links and lags from start milestones count from the start of the day.
 - Delay train: a level of effort or WBS summary is never taken as the driver of the finish.

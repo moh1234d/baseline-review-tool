@@ -205,6 +205,9 @@ E.trainRounds = function (B, train, start, o) {
   const trace = r => { const ES = t => r.es.has(t.id) ? r.es.get(t.id) : t.es, EF = t => r.ef.has(t.id) ? r.ef.get(t.id) : t.ef; let end = null;
     for (const t of B.tasks) { if (done(t) || skip(t) || !r.ef.has(t.id)) continue; if (!end || EF(t) > EF(end) || (EF(t) === EF(end) && t.isMile && !end.isMile)) end = t; }
     const chain = [], seen = new Set(); let t = end;
+    /* v9.11: the hour-level recalculation records the link that drives each activity: follow it */
+    if (r.drv) { if (r.efM) { end = null; for (const x of B.tasks) { if (done(x) || skip(x) || !r.rsM.has(x.id)) continue; const v = r.efM.get(x.id); if (!end || v > r.efM.get(end.id) + 1e-6 || (Math.abs(v - r.efM.get(end.id)) <= 1e-6 && x.isMile && !end.isMile)) end = x; } t = end; }
+      while (t && !seen.has(t.id) && chain.length < 3000) { seen.add(t.id); chain.unshift(t); const l = r.drv.get(t.id); t = l && !done(l.from) && !skip(l.from) ? l.from : null; } return chain; }
     while (t && !seen.has(t.id) && chain.length < 3000) { seen.add(t.id); chain.unshift(t); let ds = []; try { ds = E.dlDrivers(B, t, { ES, EF, links: pre.links }) || []; } catch (e) { ds = []; }
       const z = ds.filter(x => x.gap != null && x.gap <= 0.01 && !done(x.from) && !skip(x.from) && !seen.has(x.from.id)).sort((x, y) => (y.imp - x.imp) || (EF(y.from) - EF(x.from))); t = z.length ? z[0].from : null; }
     return chain; };
