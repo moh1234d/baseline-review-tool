@@ -4,7 +4,7 @@ E.defaultCfg = () => ({
   milestones: [], reviewDays: null, projectType: 'infrastructure', fileType: 'baseline',
   weights: { engineering: 7, procurement: 13, construction: 75, handover: 5 },
   weightGroup: { general: 'engineering', mobilization: 'engineering', engineering: 'engineering', procurement: 'procurement', delivery: 'procurement', construction: 'construction', closeout: 'handover' },
-  floatLimit: 60, stdDayHr: 8, maxWeekHr: 60, fridayOff: true, cmpMinShared: 30, rpPaths: 3, navTips: true, navTipDelay: 300, ramadanNormal: true, durLimit: 60, reportingPeriod: 30, maxFsLag: 0, nearCrit: 10, costTol: 0.1, weightTol: 0.5, curveTol: 10,
+  floatLimit: 60, stdDayHr: 8, maxWeekHr: 60, fridayOff: true, cmpMinShared: 30, rpPaths: 3, rpLeftPct: 55, rpLabW: 170, rpZoom: 100, navTips: true, navTipDelay: 300, ramadanNormal: true, durLimit: 60, reportingPeriod: 30, maxFsLag: 0, nearCrit: 10, costTol: 0.1, weightTol: 0.5, curveTol: 10,
   approvalExclude: 'shop ?draw|material|submittal|sample|mock-?up|method statement|as-?built',
   calRules: { general: 6, mobilization: 6, engineering: 6, procurement: 6, delivery: 7, construction: 6, closeout: 6, approval: 5 },
   wbsMap: null, approvalIds: null, rsrc: { progress: null, cost: null }, projFinishId: null,

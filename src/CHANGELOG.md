@@ -1,3 +1,9 @@
+## v9.14 (2026-11-20)
+- Recovery planner: every chart can be resized. The name column of the logic Gantt and of the finish chart has a drag bar (dashed line, drag it sideways) and the Chart labels slider; long activity names now wrap onto two lines instead of being cut. New Chart zoom slider (100 to 250%) enlarges all charts and shapes (Gantt, network, plots, finish chart, waterfall) with sideways scrolling. Also in Setup.
+
+## v9.13 (2026-11-20)
+- Recovery planner: resizable panels. Drag the bar between the charts and the levers (or use the sliders, or the arrow keys on the bar; double-click resets). The chart label column has its own slider. Charts redraw at the real width and activity names are shortened only as much as the space needs, so widening a panel shows the full names. Sizes are saved and also set in Setup (works on the phone, where the panels stack and the label slider applies).
+
 ## v9.12 (2026-11-20)
 - Recovery planner: P6 check report. The tool recalculates the update without looking at P6's dates and compares, activity by activity: project finish, start dates, finish dates and the longest path against P6's own flag; a verdict; how the file was scheduled in P6; every difference traced to where it starts, with the likely cause; entries that make P6 behave unexpectedly (part-day durations, time-related activities on the longest path, level of effort flagged on the longest path); a warning when the file was changed after it was last scheduled; what was not checked (total float). Excel download with the full lists.
 - Recalculation: with retained logic the remaining work of an activity in progress still waits for its start-to-start predecessor (checked against P6).
