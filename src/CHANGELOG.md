@@ -1,3 +1,9 @@
+## v9.8 (2026-11-20)
+- Recovery planner, paths: paths 2, 3 … are now ranked by float relative to the finish (how many working days the path can slip before it drives the finish), found by following the tightest link into the paths already found. A branch that repeats the trades of a path already found (same sequence in another zone, floor or plot) is folded into it as an identical copy. Each path is named by its area and trade.
+- Recovery planner, delay origin: the trace through completed work is unchanged (the predecessor that finished last, up to the activity's finish), because site work overlaps; activities that started while their driving predecessor was still finishing are now counted and reported.
+- Levers: approvals run in parallel only between different authorities or different places (same authority, same place stays sequential; levers with nothing possible are listed under Not possible on this path, with the reason). Long lags are cut only when no activity name gives the lag a reason (curing, review, delivery, test). Extra crew uses a % per trade and states the extra crew the cut needs. All three lists are settings (Delay train and lever settings).
+- Includes the v9.7 lever cards.
+
 ## v9.7 (2026-11-18)
 - Recovery planner: new mitigation lever cards. Each card shows the days saved big on the right, three small tiles (Who, Changes, Effect) and a short before → after table of the first three changes. Everything else (why, full rule, identical copies, the full list with the exclude button) is under All details. The switch is the only click target; the open/closed state of All details is kept.
 
