@@ -1,7 +1,7 @@
 /* ===== ENGINE PART 16 (v8.0): delay train — where the delay entered the driving chain, and which levers ahead win time back =====
    The chain is traced back from the target through completed work (actual dates) to the start, so the origin of the delay is found even when it
    happened months before the data date. Slip = current finish − baseline finish (calendar days), by activity ID. Levers are tested with E.recalc. */
-E.TRAIN_DEFAULTS = { originMin: 5, maxCars: 10, startAtPct: 50, lagMin: 10, lagTo: 7, crewPct: 30, minRemWd: 5, overlapMinWd: 10, twins: true, userHard: [], authBodies: 'ECZA|MOI|civil defen|SEC|NWC|STC|municipal|baladi|DRC|MODON|royal commission', lagKeepWords: 'cur(e|ing)|pour|cast|concret|approv|review|submit|deliver|procure|fabricat|test|inspect|settl|dry', crewTrades: [['formwork|shutter', 30], ['rebar|reinforc|steel fix', 30], ['block|masonry|plaster|paint|til(e|ing)|gypsum|ceiling', 30], ['conduit|duct|pipe|cable|wiring|hvac|plumb|electr|fire fight|mep', 25], ['excavat|backfill|earthwork', 35]], authWords: 'ECZA|MOI|site visit|certificate|permit|occupan|power on|as-?built|civil defen|inspector|snag|authority|approv|NOC' };
+E.TRAIN_DEFAULTS = { originMin: 5, maxCars: 10, startAtPct: 50, lagMin: 10, lagTo: 7, crewPct: 30, minRemWd: 5, overlapMinWd: 10, maxRounds: 6, noCrewWords: 'mobili[sz]|preliminar|overhead|site office|site facilit|site establish|management|supervision|insurance|temporary|hoarding|handing over|hand ?over', twins: true, userHard: [], authBodies: 'ECZA|MOI|civil defen|SEC|NWC|STC|municipal|baladi|DRC|MODON|royal commission', lagKeepWords: 'cur(e|ing)|pour|cast|concret|approv|review|submit|deliver|procure|fabricat|test|inspect|settl|dry', crewTrades: [['formwork|shutter', 30], ['rebar|reinforc|steel fix', 30], ['block|masonry|plaster|paint|til(e|ing)|gypsum|ceiling', 30], ['conduit|duct|pipe|cable|wiring|hvac|plumb|electr|fire fight|mep', 25], ['excavat|backfill|earthwork', 35]], authWords: 'ECZA|MOI|site visit|certificate|permit|occupan|power on|as-?built|civil defen|inspector|snag|authority|approv|NOC' };
 /* car title: the WBS the car shares; when it spans several branches, the branch most of its activities sit in, plus "+ n more" */
 E._trainTitle = function (ps) {
   const common = arr => { let k = 0; while (arr.every(p => p[k] && p[k] === arr[0][k])) k++; return k; };
@@ -91,7 +91,9 @@ E.trainLevers = function (B, train, o) {
   const remOf = t => { const r = raw && raw.get(t.code); if (r) { const h = parseFloat(r.remain_drtn_hr_cnt); if (!isNaN(h)) return h / ((B.cal[t.clndr] || {}).dayHr || 8); } return t.remWd != null ? t.remWd : (t.durWd || 0); };
   const leaf = t => (B.wbs[t.wbs] || {}).name || '', twinKey = t => t.name + '\u0001' + leaf(t), byKey = new Map();
   for (const t of B.tasks) if (t.status !== 'TK_Complete') { const k = twinKey(t); let l = byKey.get(k); if (!l) byKey.set(k, l = []); l.push(t); }
-  const base = E.recalc(B, { raw }), out = [], blocked = [];
+  /* v9.9: o.pre = changes already taken in earlier rounds; levers are then measured on top of them and never touch the same link or activity twice */
+  const pre = o.pre || { rem: new Map(), links: new Map() }, withPre = ch => { const rem = new Map(pre.rem), links = new Map(pre.links); if (ch) { for (const [k, v] of ch.rem) rem.set(k, Math.min(v, rem.has(k) ? rem.get(k) : Infinity)); for (const [k, v] of ch.links) links.set(k, v); } return { raw, rem, links }; };
+  const base = E.recalc(B, withPre(null)), out = [], blocked = [];
   /* overlap checks: physical-constraint pairs, the sequence rules marked "no overlap", same place vs different place, the contractor's own precedent */
   const hardL = (cfg.hardPairs || E.TRAIN_HARD).map(([a, b, n]) => { try { return [new RegExp(a, 'i'), new RegExp(b, 'i'), n]; } catch (e) { return null; } }).filter(Boolean);
   const userHard = new Set((cfg.userHard || []).map(x => x[0] + '\u2192' + x[1]));
@@ -108,10 +110,11 @@ E.trainLevers = function (B, train, o) {
     if (prec.get(k)) return [true, 'precedent: linked SS ' + prec.get(k) + ' time' + (prec.get(k) === 1 ? '' : 's') + ' elsewhere'];
     if (pr >= 2 * cfg.overlapMinWd) return [true, 'long activity in the same area: start on finished parts (check)'];
     return [false, 'same area, no precedent']; };
+  const noCrew = rx(cfg.noCrewWords, /(?!)/);
   const lagKeep = rx(cfg.lagKeepWords, /(?!)/), bodies = rx(cfg.authBodies, /(?!)/), bodyOf = nm => { const m = bodies.exec(nm); return m ? m[0].toLowerCase() : ''; };
   const trades = (cfg.crewTrades || []).map(([w, q]) => { try { return [new RegExp(w, 'i'), Math.max(0, Math.min(60, +q || 0))]; } catch (e) { return null; } }).filter(Boolean), crewPctOf = nm => { for (const [r, q] of trades) if (r.test(nm)) return q; return Math.max(0, Math.min(60, +cfg.crewPct || 0)); };
   const note = (ch, ok, why, l) => { ch.why = ch.why || { ok: {}, no: {}, map: new Map() }; const k = why.split(':')[0], b = ok ? ch.why.ok : ch.why.no; b[k] = (b[k] || 0) + 1; ch.why.map.set(l, why); };
-  const run = ch => { const r = E.recalc(B, { raw, rem: ch.rem, links: ch.links }); return Math.round(base.finish - r.finish); };
+  const run = ch => { const r = E.recalc(B, withPre(ch)); return Math.round(base.finish - r.finish); };
   for (const c of train.cars) {
     if (c.phase !== 'next' && c.phase !== 'now') continue;
     const own = c.rows.map(r => r.t).filter(t => t.status !== 'TK_Complete');
@@ -119,8 +122,8 @@ E.trainLevers = function (B, train, o) {
     if (cfg.twins) { const s = new Set(); for (const t of own) for (const x of (byKey.get(twinKey(t)) || [t])) s.add(x.id); if (s.size > own.length) scopes.unshift(['twins', s]); }
     const mk = (kind, inS) => { const ch = { rem: new Map(), links: new Map(), n: 0, pcts: new Set() };
       for (const t of B.tasks) { if (!inS.has(t.id)) continue;
-        if (kind === 'crew' && !t.isMile && !hold.test(t.name)) { const r = remOf(t); const q = crewPctOf(t.name); if (r >= cfg.minRemWd && q > 0) { ch.rem.set(t.id, r * (1 - q / 100)); ch.pcts.add(q); ch.n++; } }
-        for (const l of t.pre) { if (!inS.has(l.from.id) || l.from.status === 'TK_Complete') continue; const ph = hold.test(l.from.name) || hold.test(t.name);
+        if (kind === 'crew' && !t.isMile && !hold.test(t.name) && !noCrew.test(t.name) && !pre.rem.has(t.id)) { const r = remOf(t); const q = crewPctOf(t.name); if (r >= cfg.minRemWd && q > 0) { ch.rem.set(t.id, r * (1 - q / 100)); ch.pcts.add(q); ch.n++; } }
+        for (const l of t.pre) { if (!inS.has(l.from.id) || l.from.status === 'TK_Complete' || pre.links.has(l)) continue; const ph = hold.test(l.from.name) || hold.test(t.name);
           if (kind === 'overlap' && !ph && l.type === 'FS' && !l.from.isMile && !t.isMile) { const pr = remOf(l.from); const [ok, why] = canOverlap(l.from, t, pr); ch.why = ch.why || { ok: {}, no: {}, map: new Map() }; (ok ? ch.why.ok : ch.why.no)[why.split(':')[0]] = ((ok ? ch.why.ok : ch.why.no)[why.split(':')[0]] || 0) + 1; ch.why.map.set(l, why); if (ok) { ch.links.set(l, [{ type: 'SS', lagWd: Math.max(0, Math.ceil(pr * cfg.startAtPct / 100)) }, { type: 'FF', lagWd: Math.max(1, Math.ceil(remOf(t) * 0.2)) }]); ch.n++; } }
           /* v9.8: a lag is only cut when nothing says why it is there (curing, review period, delivery, test); approvals run in parallel only between different authorities or different places */
           if (kind === 'lag' && (l.lagWd || 0) >= cfg.lagMin) { const m = lagKeep.exec(l.from.name) || lagKeep.exec(t.name), why = m ? 'kept, lag has a reason: ' + m[0].toLowerCase() : 'no stated reason'; note(ch, !m, why, l); if (!m) { ch.links.set(l, [{ type: l.type, lagWd: Math.min(l.lagWd, cfg.lagTo) }]); ch.n++; } }
@@ -184,4 +187,44 @@ E.dlPathsRel = function (M, target, n) {
   }
   paths.forEach((p, i) => { const v = p.chain.filter(t => !done(t) && t.tfWd != null).map(t => t.tfWd); p.tf = v.length ? Math.min(...v) : 0; if (i === 0) p.tf = Math.min(p.tf, 0); });
   return paths;
+};
+
+/* v9.9: recovery in rounds (the crashing procedure). Round 1 = the levers already chosen on the driving path. After each round the schedule is recalculated with everything
+   taken so far, the NEW driving path of the work still to come is traced on the recalculated dates, and the best contractor lever of each stage of that path is taken.
+   Stops when the slip is recovered, when no lever on the new driving path gains a day, or after cfg.maxRounds. */
+E.trainRounds = function (B, train, start, o) {
+  o = o || {}; const cfg = train.cfg, raw = o.raw, done = t => t.status === 'TK_Complete', skip = t => t.type === 'TT_LOE' || t.type === 'TT_WBS';
+  const pre = { rem: new Map(), links: new Map() }, add = lv => { for (const [k, v] of lv.ch.rem) pre.rem.set(k, Math.min(v, pre.rem.has(k) ? pre.rem.get(k) : Infinity)); for (const [k, v] of lv.ch.links) pre.links.set(k, v); };
+  const calc = () => E.recalc(B, { raw, rem: pre.rem, links: pre.links }), r0 = E.recalc(B, { raw }), slip = Math.max(0, train.target.slip || 0), rounds = [];
+  const wpath = id => { const p = []; let w = B.wbs[id]; while (w) { p.unshift(w); w = w.parent ? B.wbs[w.parent] : null; } return p; };
+  const title = ts => { try { return E._trainTitle(ts.map(t => wpath(t.wbs))); } catch (e) { return ts.length ? ts[0].name : ''; } };
+  const lvRow = (lv, cars) => ({ label: lv.label, kind: lv.kind, who: lv.who, where: (cars[lv.car] || {}).title || '', n: lv.n, copies: lv.copies, alone: lv.gain, effect: lv.effect || lv.how });
+  /* the driving path of the remaining work on recalculated dates */
+  const trace = r => { const ES = t => r.es.has(t.id) ? r.es.get(t.id) : t.es, EF = t => r.ef.has(t.id) ? r.ef.get(t.id) : t.ef; let end = null;
+    for (const t of B.tasks) { if (done(t) || skip(t) || !r.ef.has(t.id)) continue; if (!end || EF(t) > EF(end) || (EF(t) === EF(end) && t.isMile && !end.isMile)) end = t; }
+    const chain = [], seen = new Set(); let t = end;
+    while (t && !seen.has(t.id) && chain.length < 3000) { seen.add(t.id); chain.unshift(t); let ds = []; try { ds = E.dlDrivers(B, t, { ES, EF, links: pre.links }) || []; } catch (e) { ds = []; }
+      const z = ds.filter(x => x.gap != null && x.gap <= 0.01 && !done(x.from) && !skip(x.from) && !seen.has(x.from.id)).sort((x, y) => (y.imp - x.imp) || (EF(y.from) - EF(x.from))); t = z.length ? z[0].from : null; }
+    return chain; };
+  const cut = chain => { const cs = []; for (const t of chain) { const k = (B.wbs[t.wbs] || {}).parent || t.wbs, l = cs[cs.length - 1]; if (l && l.key === k) l.ts.push(t); else cs.push({ key: k, ts: [t] }); }
+    while (cs.length > 4) { let bi = 0, bv = Infinity; for (let i = 0; i < cs.length - 1; i++) { const v = cs[i].ts.length + cs[i + 1].ts.length; if (v < bv) { bv = v; bi = i; } } cs[bi].ts.push(...cs[bi + 1].ts); cs.splice(bi + 1, 1); }
+    return cs.map((c, i) => ({ idx: i, phase: 'next', rows: c.ts.map(t => ({ t, name: t.name, code: t.code })), title: title(c.ts), n: c.ts.length })); };
+  let cum = 0, stop = '';
+  if (start && start.length) { start.forEach(add); const g = Math.round(r0.finish - calc().finish); cum = g; rounds.push({ n: 1, yours: true, path: { label: title(train.rows.filter(r => !done(r.t)).map(r => r.t)), n: train.rows.filter(r => !done(r.t)).length }, levers: start.map(lv => lvRow(lv, train.cars)), gain: g, cum }); }
+  const max = Math.max(1, Math.min(20, Math.round(+cfg.maxRounds || 6)));
+  while (rounds.length < max) {
+    if (slip && cum >= slip) { stop = 'The slip is recovered.'; break; }
+    const r = calc(), chain = trace(r); if (chain.length < 2) { stop = 'No driving path could be traced in the remaining work.'; break; }
+    const cars = cut(chain), L = E.trainLevers(B, { cfg, cars }, { raw, holdWords: o.holdWords, seqCfg: o.seqCfg, pre });
+    const best = new Map(); for (const lv of L.levers) if (lv.gain > 0 && lv.kind !== 'parallel' && (!best.has(lv.car) || lv.gain > best.get(lv.car).gain)) best.set(lv.car, lv);
+    const pick = [...best.values()]; const path = { label: title(chain), n: chain.length, first: chain[0].name, last: chain[chain.length - 1].name };
+    if (!pick.length) { rounds.push({ n: rounds.length + 1, path, levers: [], gain: 0, cum, blocked: L.blocked.length, none: true }); const hd = chain.filter(t => !t.isMile).sort((x, y) => (y.remWd || 0) - (x.remWd || 0))[0];
+      stop = chain.length <= 3 && hd ? 'The finish is now held by “' + hd.name + '” (' + hd.code + ', ' + Math.round(hd.remWd != null ? hd.remWd : hd.durWd || 0) + ' working days remaining), and no lever applies to it. If it is a time-related activity (temporary works, site management), ask the contractor to make it a level of effort or correct its remaining duration, then run the rounds again.' : 'No contractor lever on the new driving path gains a day' + (L.levers.some(x => x.kind === 'parallel' && x.gain > 0) ? ' (an authority lever does)' : '') + '.'; break; }
+    const before = r.finish; pick.forEach(add); const g = Math.round(before - calc().finish);
+    if (g <= 0) { stop = 'The levers on the new driving path do not add up to a day.'; break; }
+    cum += g; rounds.push({ n: rounds.length + 1, path, levers: pick.map(lv => lvRow(lv, cars)), gain: g, cum });
+  }
+  if (!stop) stop = slip && cum >= slip ? 'The slip is recovered.' : 'Stopped after ' + max + ' rounds (the limit in the settings).';
+  const rN = calc(), nAct = pre.rem.size, nLink = pre.links.size;
+  return { rounds, total: cum, slip, residual: Math.max(0, slip - cum), stop, finish: rN.finish, base: r0.finish, nAct, nLink, pre };
 };

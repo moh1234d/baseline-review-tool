@@ -1,3 +1,6 @@
+## v9.9 (2026-11-20)
+- Recovery planner: Recovery in rounds. Round 1 is the levers you switched on; the tool then recalculates, traces the path that drives the finish next, takes the best contractor lever of each stage on it, and repeats until the slip is recovered, nothing more gains a day, or the round limit (a setting, default 6) is reached. Shows the days recovered, the days still late, each round's driving path and actions; the table also goes into the Word report. A link or activity is never changed twice.
+
 ## v9.8 (2026-11-20)
 - Recovery planner, paths: paths 2, 3 … are now ranked by float relative to the finish (how many working days the path can slip before it drives the finish), found by following the tightest link into the paths already found. A branch that repeats the trades of a path already found (same sequence in another zone, floor or plot) is folded into it as an identical copy. Each path is named by its area and trade.
 - Recovery planner, delay origin: the trace through completed work is unchanged (the predecessor that finished last, up to the activity's finish), because site work overlaps; activities that started while their driving predecessor was still finishing are now counted and reported.
