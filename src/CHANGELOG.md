@@ -1,3 +1,8 @@
+## v9.10 (2026-11-20)
+- What-if recalculation checked against the dates P6 stored in two real files, and corrected: with progress override the finish of in-progress work is still held by its finish-type links (FF, SF); a data date stamped in the afternoon means remaining work starts the next day (finish milestones can still fall on the data date); a completed predecessor still holds its successor through a lag; start and finish milestones fall on the same day P6 shows; SF links and lags from start milestones count from the start of the day.
+- Delay train: a level of effort or WBS summary is never taken as the driver of the finish.
+- Recovery planner: new line "Check against P6" under the path note: the tool's own finish against P6 and the share of remaining activity dates that are identical.
+
 ## v9.9 (2026-11-20)
 - Recovery planner: Recovery in rounds. Round 1 is the levers you switched on; the tool then recalculates, traces the path that drives the finish next, takes the best contractor lever of each stage on it, and repeats until the slip is recovered, nothing more gains a day, or the round limit (a setting, default 6) is reached. Shows the days recovered, the days still late, each round's driving path and actions; the table also goes into the Word report. A link or activity is never changed twice.
 

@@ -19,13 +19,15 @@ E.delayTrain = function (A, B, o) {
         that finished after this activity had already finished (out-of-sequence progress does not drive). */
   const cons = (l) => { const p = l.from, lag = (l.lagCal || 0); return (l.type === 'SS' || l.type === 'SF' ? p.es : p.ef) + lag; };
   /* v8.5: o.chain = a path already traced by the Delay analysis (paths 2 and 3 stop where they join a higher path; o.joins = that shared activity, whose slip is carried in) */
+  /* v9.10: a level of effort or WBS summary takes its dates from other work and never drives */
+  const noDrive = x => x.type === 'TT_LOE' || x.type === 'TT_WBS';
   const chain = [], seen = new Set(), oos = new Set(); let t = o.chain && o.chain.length ? null : target;
   while (t && !seen.has(t.id) && chain.length < 3000) {
     seen.add(t.id); chain.push(t); let nx = null;
-    if (t.as == null) { let d = []; try { d = E.dlDrivers(B, t) || []; } catch (e) { d = []; } const z = d.filter(x => x.gap != null && x.gap <= 0.01 && !seen.has(x.from.id)).map(x => x.from); if (z.length) nx = z.sort((x, y) => y.ef - x.ef)[0]; }
+    if (t.as == null) { let d = []; try { d = E.dlDrivers(B, t) || []; } catch (e) { d = []; } const z = d.filter(x => x.gap != null && x.gap <= 0.01 && !seen.has(x.from.id) && !noDrive(x.from)).map(x => x.from); if (z.length) nx = z.sort((x, y) => y.ef - x.ef)[0]; }
     if (!nx) { /* the as-built driver: the predecessor that released this activity last, up to its finish. Site work overlaps (rebar starts while the formwork is finishing), so a predecessor
          that finished after this activity STARTED still controlled its finish; v9.8 counts those (worked in overlap) instead of dropping them. */
-      const lim = (t.ef != null ? t.ef : t.es != null ? t.es : Infinity) + 1; const c = t.pre.filter(l => !seen.has(l.from.id) && l.from.ef != null && cons(l) <= lim).sort((x, y) => cons(y) - cons(x)); nx = c.length ? c[0].from : null;
+      const lim = (t.ef != null ? t.ef : t.es != null ? t.es : Infinity) + 1; const c = t.pre.filter(l => !seen.has(l.from.id) && !noDrive(l.from) && l.from.ef != null && cons(l) <= lim).sort((x, y) => cons(y) - cons(x)); nx = c.length ? c[0].from : null;
       if (nx && t.as != null && t.es != null && (c[0].type === 'FS' || c[0].type === 'SS') && cons(c[0]) > t.es) oos.add(t.id); }
     t = nx;
   }

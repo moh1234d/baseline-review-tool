@@ -63,7 +63,7 @@ E.buildModel = function (T) {
   for (const n of ['CALENDAR', 'PROJWBS', 'RSRC', 'TASKPRED', 'TASKRSRC']) if (!T[n]) T[n] = { f: [], r: [] };
   const M = { T };
   const P = T.PROJECT.r[0]; M.proj = P;
-  M.dataDate = E.pd(P.last_recalc_date);
+  M.dataDate = E.pd(P.last_recalc_date); /* v9.10: a data date stamped in the afternoon (e.g. 17:00) means that day is spent: remaining work starts the next day */ { const m = /\s(\d{1,2}):/.exec(String(P.last_recalc_date || '')); M.ddNext = !!(m && +m[1] >= 12); }
   M.planStart = E.pd(P.plan_start_date); M.planEnd = E.pd(P.scd_end_date || P.plan_end_date);
   M.so = (T.SCHEDOPTIONS && T.SCHEDOPTIONS.r[0]) || {};
   M.cal = {};

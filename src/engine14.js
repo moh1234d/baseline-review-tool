@@ -1,6 +1,6 @@
 /* ===== ENGINE PART 14: what-if recalculation of the remaining schedule (v5.15). Day-level forward pass on the activity calendars; only start constraints (start on, start on or after, mandatory start) are applied; in-progress work follows retained logic unless the file uses progress override; start milestones take no time, finish milestones take the finish day of their predecessor; results are used as a difference against the same calculation without the change. ===== */
 E.recalc = function (M, o) {
-  o = o || {}; const dd = M.dataDate, cals = Object.values(M.cal), calOf = t => M.cal[t.clndr] || cals[0];
+  o = o || {}; const dd = M.dataDate != null && M.ddNext ? M.dataDate + 1 : M.dataDate, cals = Object.values(M.cal), calOf = t => M.cal[t.clndr] || cals[0];
   const work = (cal, d) => { let n = 0; while (!E.isWorking(cal, d) && n++ < 400) d++; return d; }, workBack = (cal, d) => { let n = 0; while (!E.isWorking(cal, d) && n++ < 400) d--; return d; };
   const shift = (cal, d, lag) => { const n = Math.round(lag || 0), st = n >= 0 ? 1 : -1; for (let i = 0; i < Math.abs(n); i++) { d += st; let g = 0; while (!E.isWorking(cal, d) && g++ < 400) d += st; } return d; };
   const addWd = (cal, s, n) => { let d = work(cal, s), c = 1; while (c < n) { d++; if (E.isWorking(cal, d)) c++; } return d; };
@@ -9,16 +9,19 @@ E.recalc = function (M, o) {
   const inc = M.tasks.filter(t => t.status !== 'TK_Complete' && t.type !== 'TT_LOE' && t.type !== 'TT_WBS'), es = new Map(), ef = new Map(); for (const t of M.tasks) if (t.status === 'TK_Complete') { es.set(t.id, t.es); ef.set(t.id, t.ef); }
   const indeg = new Map(), ids = new Set(inc.map(t => t.id)); for (const t of inc) indeg.set(t.id, 0); for (const t of inc) for (const l of t.pre) if (ids.has(l.from.id)) indeg.set(t.id, indeg.get(t.id) + 1);
   const q = inc.filter(t => !indeg.get(t.id)), order = []; while (q.length) { const t = q.pop(); order.push(t); for (const l of t.succ) { if (!ids.has(l.to.id)) continue; const k = indeg.get(l.to.id) - 1; indeg.set(l.to.id, k); if (!k) q.push(l.to); } }
+  /* v9.10: a start milestone sits at the start of its day, which is the same moment as the end of the working day before: used for finish-type links */
+  const sm = x => x.isMile && !x.isFinMile;
   const retained = !(M.so && (M.so.sched_retained_logic || M.so.retained_logic) === 'N');
   const eeMode = (o.expectFinish || 'auto'), useEE = eeMode === 'on' || (eeMode === 'auto' && !!(M.so && M.so.sched_use_expect_end_flag === 'Y'));
-  for (const t of order) { const cal = calOf(t), rem = remOf(t), mile = t.isMile, act = t.status === 'TK_Active'; let s = work(cal, dd != null ? dd : (t.es || 0));
+  for (const t of order) { const cal = calOf(t), rem = remOf(t), mile = t.isMile, act = t.status === 'TK_Active'; let s = t.isFinMile && M.ddNext && M.dataDate != null ? work(cal, M.dataDate) : work(cal, dd != null ? dd : (t.es || 0));
     if (/^CS_(MSO|MSOA|MANDSTART)$/i.test(t.cstrType || '') && t.cstrDate != null) s = Math.max(s, work(cal, t.cstrDate));
     /* in-progress work keeps its actual start; with retained logic its remaining work still waits for its predecessors */
-    if (!act || retained) for (const l of t.pre) { if (!ids.has(l.from.id)) continue; const p = l.from, pcal = calOf(p), ps = es.get(p.id), pe = ef.get(p.id), arr = (o.links && o.links.get(l)) || [{ type: l.type, lagWd: l.lagWd }];
+    /* v9.10: with progress override P6 still holds the FINISH of in-progress work by its finish-type links (FF, SF); only the start-type links (FS, SS) are ignored */
+    for (const l of t.pre) { /* v9.10: a completed predecessor still holds its successor through a lag counted from its actual dates */ const done0 = !ids.has(l.from.id); if (done0 && (l.from.status !== 'TK_Complete' || !(Math.round(l.lagWd || 0) > 0) || es.get(l.from.id) == null || ef.get(l.from.id) == null || (o.links && o.links.has(l)))) continue; const p = l.from, pcal = calOf(p), ps = es.get(p.id), pe = ef.get(p.id), arr = (o.links && o.links.get(l)) || [{ type: l.type, lagWd: l.lagWd }];
       for (const c of arr) {
-        if (c.type === 'FS') { const f = shift(pcal, pe, c.lagWd); /* a start milestone has no duration: its successor starts the same day; a finish milestone takes the finish day of its predecessor */ s = Math.max(s, work(cal, p.isMile && !p.isFinMile || t.isFinMile ? f : f + 1)); }
-        else if (c.type === 'SS') { if (!act) s = Math.max(s, work(cal, shift(pcal, ps, c.lagWd))); }
-        else { const F = shift(pcal, c.type === 'FF' ? pe : ps, c.lagWd); s = Math.max(s, rem > 0 ? subW(cal, F, rem) : F); } } }
+        if (c.type === 'FS') { if (act && !retained) continue; const f = shift(pcal, pe, c.lagWd); /* a start milestone has no duration: its successor starts the same day; a finish milestone takes the finish day of its predecessor */ s = Math.max(s, work(cal, p.isMile && !p.isFinMile || t.isFinMile ? f : f + 1)); }
+        else if (c.type === 'SS') { /* v9.10: a finish milestone happens at the end of its day, so what starts with it starts the next working day (unless it is itself a finish milestone) */ if (!act) s = Math.max(s, work(cal, shift(pcal, ps, c.lagWd) + (p.isFinMile && !t.isFinMile ? 1 : 0))); }
+        else { /* a start (of a start milestone, or the start an SF link points at) is the start of its day = the end of the working day before */ const st0 = c.type !== 'FF' || sm(p), keep = t.isFinMile && !Math.round(c.lagWd || 0); const F = st0 && !keep && (rem > 0 || Math.round(c.lagWd || 0)) ? shift(pcal, workBack(pcal, (c.type === 'FF' ? pe : ps) - 1), c.lagWd) : shift(pcal, c.type === 'FF' ? pe : ps, c.lagWd); /* v9.10: a start milestone tied to a finish falls on the next working day */ s = Math.max(s, rem > 0 ? subW(cal, F, rem) : (mile && !t.isFinMile && c.type === 'FF' && !(p.isMile && !p.isFinMile) ? work(cal, F + 1) : F)); } } }
     es.set(t.id, act && t.es != null ? t.es : s); let fe = mile || rem <= 0 ? s : addWd(cal, s, rem);
     /* v7.9: Expected Finish (P6 option 'use expected finish dates') replaces the finish computed from remaining duration */
     if (useEE && t.ee != null && !mile) fe = Math.max(s, t.ee); ef.set(t.id, fe); }
