@@ -1,3 +1,6 @@
+## v9.16 (2026-11-21)
+- Recovery in rounds: the run button is a normal-size button under the explanation (no longer a full-width bar), with a note of what it will do: number of rounds (from settings), contractor levers only, nothing in the file changes.
+
 ## v9.15 (2026-11-20)
 - Recovery planner: stage boxes (Cards, Network, Parallel plots) show what each number is (delay added here / recovered here), plus the stage duration, the lowest total float of its open activities (from P6) and the slip at the end of the stage. Three card designs to choose from (A tiles, B labelled rows, C compact footer), also in Setup.
 - Recovery planner: Expand button fills the page with the delay chart; Collapse or Esc returns.
