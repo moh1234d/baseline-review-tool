@@ -81,6 +81,11 @@ function rpInterfere(R) {
   for (const x of L) { const lastC = x.T.cars[x.T.cars.length - 1], rr = lastC.rows.map(r => r.t), last = rr[rr.length - 1], pr = last === t0 ? rr[rr.length - 2] : last, lk = t0 && pr ? (t0.pre.find(l => l.from === pr) || null) : null; info.ends.push({ lane: x, last: pr || last, link: lk ? rpLk(lk) : null, isFinish: last === t0 }); }
   return info;
 }
+/* data date line: one look in every view - violet (used nowhere else), solid, white halo so it shows over boxes and bars */
+const RP_DD = '#6d28d9';
+const rpDDTag = (x, y, dd, W) => { const t = 'DATA DATE ' + dd, lw = rpTw(t, 9.5, true) + 18, lx = Math.max(2, Math.min(W - lw - 2, x - lw / 2)); return `<rect x="${lx}" y="${y}" width="${lw}" height="18" rx="9" fill="${RP_DD}" stroke="#fff" stroke-width="1.5"/><text x="${lx + 9}" y="${y + 12.5}" font-size="9.5" font-weight="800" fill="#fff">${esc(t)}</text>`; };
+const rpDDLine = pts => { const p = pts.map(q => q.join(',')).join(' '); return `<polyline points="${p}" fill="none" stroke="#fff" stroke-width="7" stroke-linejoin="round" opacity=".9"/><polyline points="${p}" fill="none" stroke="${RP_DD}" stroke-width="3" stroke-linejoin="round"/>`; };
+const rpDDOf = () => { const M = S.rp && S.rp.B && S.rp.B.M; return M && M.dataDate != null ? M.dataDate : null; };
 function rpPlotsSvg(D, R) {
   const N = rpNums(D), I = rpInterfere(R), L = I.lanes; if (!L.length) return '<p class="hint">No path available.</p>';
   const w = 196, h = rpNodeH(), gx = 30, gy = 58, selCars = new Set(D.train.cars.filter(c => D.lev && [...D.levOn].some(i => D.lev.levers[i].car === c.idx)).map(c => c.title));
@@ -112,6 +117,16 @@ function rpPlotsSvg(D, R) {
   L.forEach((x, r) => { const e = I.ends.find(q => q.lane === x), last = lanesCars[r].length - 1; if (last < 0) return; const xr = px(off[r] + last) + w;
     if (x.p.rank === 1) s += `<path d="M${xr} ${ys[r]} H${r === 0 ? fx : busX}${r === 0 ? '' : ' V' + ys[0]}" fill="none" stroke="#c0392b" stroke-width="2.4" ${r === 0 ? 'marker-end="url(#rpa)"' : ''}/>`; else { s += `<path d="M${xr} ${ys[r]} H${busX} V${ys[0]}" fill="none" stroke="#8793a6" stroke-width="1.4" stroke-dasharray="5 4"/>`; const jt = (x.p.rel > 0 ? flo(x.p) + ' float' : 'no float') + (x.p.into ? ' · joins at ' + x.p.into.code : ''); s += `<text x="${xr + 10}" y="${ys[r] - 6}" font-size="9.5" font-weight="700" fill="#5e6a7d">${esc(rpFit(jt, Math.max(60, busX - xr - 60), 9.5, true))}</text>`; }
     if (e && e.link) s += `<text x="${busX - 6}" y="${ys[r] - 6}" font-size="9.5" font-weight="700" fill="#5e6a7d" text-anchor="end">${esc(e.link)}</text>`; });
+  /* data date line: columns are stages, so it steps from row to row, P6 progress-line style.
+     In-progress stage -> through its middle; otherwise in the gap before the first stage still to come. */
+  { const mode = S.cfg.rpDDMode || 'mark', dd = rpDDOf() != null ? RPD(rpDDOf()) : '';
+    if (mode === 'mark') L.forEach((x, r) => { const cs = lanesCars[r]; if (!cs.length) return; let k = cs.findIndex(c => c.phase === 'next' || c.phase === 'end'); if (k < 0) k = cs.length; const y = py(r), jn = jOf[r];
+      if (k === 0 && r && jn && jn.car >= 0) { const t = 'ALL TO COME · data date is on Path ' + jn.parent.p.rank, tw = rpTw(t, 8.5, true) + 14, x0 = px(off[r]); s += `<g pointer-events="none"><rect x="${x0}" y="${y + h + 4}" width="${tw}" height="15" rx="7.5" fill="#fff" stroke="${RP_DD}" stroke-width="1.2"/><text x="${x0 + 7}" y="${y + h + 14.5}" font-size="8.5" font-weight="800" fill="${RP_DD}">${esc(t)}</text></g>`; return; }
+      const xx = Math.max(4, k > 0 && cs[k - 1].phase === 'now' ? px(off[r] + k - 1) + w / 2 : px(off[r] + k) - gx / 2);
+      s += `<g pointer-events="none">${rpDDLine([[xx, y - 10], [xx, y + h + 6]])}${rpDDTag(xx, y + h + 4, dd, W)}</g>`; });
+    else if (mode === 'step') { const pts = []; L.forEach((x, r) => { const cs = lanesCars[r]; if (!cs.length) return; let k = cs.findIndex(c => c.phase === 'next' || c.phase === 'end'); if (k < 0) k = cs.length; const y = py(r);
+      const xx = k > 0 && cs[k - 1].phase === 'now' ? px(off[r] + k - 1) + w / 2 : px(off[r] + k) - gx / 2; const xc = Math.max(4, xx); if (pts.length) pts.push([xc, pts[pts.length - 1][1]]); pts.push([xc, y - 10], [xc, y + h + 14]); });
+      if (pts.length) s += `<g pointer-events="none">${rpDDLine(pts)}${rpDDTag(pts[pts.length - 1][0], pts[pts.length - 1][1] + 4, dd, W)}</g>`; } }
   return s + '</svg>';
 }
 function rpInterfereHtml(R) {
@@ -150,6 +165,7 @@ function rpGanttSvg(D) {
   s += dia(N.tg.fB, '#c0392b', '#c0392b') + `<text x="${X(N.tg.fB)}" y="${y + 66}" font-size="10" font-weight="700" text-anchor="end" fill="#c0392b">now ${esc(RPD(N.tg.fB))}</text>`;
   if (N.gain > 0) s += dia(N.mit, '#2e8b57', '#2e8b57') + `<text x="${X(N.mit)}" y="${y + 54}" font-size="10" font-weight="700" text-anchor="end" fill="#2e8b57">levers ${esc(RPD(N.mit))}</text><path d="M${X(N.tg.fB) - 12} ${y + 17} H${X(N.mit) + 12}" stroke="#2e8b57" stroke-width="2.5" marker-end="url(#rpt)"/>`;
   s += `<rect x="${L}" y="${H - 18}" width="14" height="6" fill="#fff" stroke="#8793a6"/><text x="${L + 19}" y="${H - 11}" font-size="10" fill="#5e6a7d">baseline</text><rect x="${L + 80}" y="${H - 19}" width="14" height="8" fill="#cfd6e2" stroke="#5e6a7d"/><text x="${L + 99}" y="${H - 11}" font-size="10" fill="#5e6a7d">current (dashed when a lever moves it)</text><rect x="${L + 300}" y="${H - 19}" width="14" height="8" fill="#2e8b57"/><text x="${L + 319}" y="${H - 11}" font-size="10" fill="#5e6a7d">with the switched-on levers</text>`;
+  { const dv = rpDDOf(); if (dv != null && dv >= lo && dv <= hi) { const x = X(dv); s += `<g pointer-events="none">${rpDDLine([[x, top - 6], [x, H - 34]])}${rpDDTag(x, H - 32, RPD(dv), W)}</g>`; } }
   return s + rpLabH(L, H - 24, 62, top - 10) + '</svg>';
 }
 function rpVisual(D, R, T, car) {
@@ -157,7 +173,7 @@ function rpVisual(D, R, T, car) {
   if (D.levBusy && v !== 'cards') return bar + '<p class="hint">Testing the levers…</p>';
   try {
     if (v === 'net') return bar + `<div class="rpv-scroll">${rpNetSvg(D)}</div><p class="hint rpv-note">Boxes are the cars; arrows are the real driving links (type and lag). Dashed green = a link the switched-on levers change. Click a box for its activities.</p>`;
-    if (v === 'plots') return bar + `<div class="rpv-scroll">${rpPlotsSvg(D, R)}</div>${rpInterfereHtml(R)}<p class="hint rpv-note"><b>The longest path is the one with no float to the finish, not the one with the biggest slip.</b> It is the red band. Every other path shows the float it still has; the slip of its last activity delays the project only after that float is used. Activities that two or more paths run through are drawn once (blue box) and the arrows show where the paths split and meet again (scroll sideways for the finish). “Twin copy” = the same activity in another plot, which receives the lever too.</p>`;
+    if (v === 'plots') return bar + `<div class="rpv-scroll">${rpPlotsSvg(D, R)}</div>${rpInterfereHtml(R)}<p class="hint rpv-note"><b>The longest path is the one with no float to the finish, not the one with the biggest slip.</b> It is the red band. ${(S.cfg.rpDDMode || 'mark') === 'none' ? 'The data date is shown in the Logic Gantt, which has a time scale.' : 'The violet mark is the data date on each path (left of it = done, a box it crosses = in progress). A path that branches off another with all its own stages still to come has no mark: its data date is on the path it branches from.'} Every other path shows the float it still has; the slip of its last activity delays the project only after that float is used. Activities that two or more paths run through are drawn once (blue box) and the arrows show where the paths split and meet again (scroll sideways for the finish). “Twin copy” = the same activity in another plot, which receives the lever too.</p>`;
     if (v === 'gantt') return bar + `<div class="rpv-scroll">${rpGanttSvg(D)}</div><p class="hint rpv-note">One bar per car from the real dates: hollow = baseline, grey = current, green = with the switched-on levers. Switch levers on or off at the right and the green bars and finish move.</p>`;
   } catch (e) { console.error(e); return bar + `<p class="hint">This view could not be drawn: ${esc(e.message)}. Switch to Cards.</p><div class="tr-train rp-row">${T.cars.map(car).join('')}</div>`; }
   return bar + `<div class="tr-train rp-row">${T.cars.map(car).join('')}</div>`;
