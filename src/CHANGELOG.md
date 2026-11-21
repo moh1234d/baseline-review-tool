@@ -1,5 +1,5 @@
 ## v9.17 (2026-11-22)
-- Recovery planner: data date line with one distinct look in every view (violet, solid, white halo, DATA DATE tag with the date): Parallel plots, Logic Gantt and Cards. In Parallel plots it steps from path to path like a P6 progress line: through the middle of the stage in progress, or in the gap before the first stage still to come.
+- Recovery planner: data date line with one distinct look in every view (violet, solid, white halo, DATA DATE tag with the date): Parallel plots, Logic Gantt and Cards. In Parallel plots each path is shifted sideways so its data date lines up with Path 1's, giving one straight line (left = done, crossed box = in progress, right = to come). Setup can switch this to a mark on each path, or to no line (Logic Gantt only).
 
 ## v9.16 (2026-11-21)
 - Recovery in rounds: the run button is a normal-size button under the explanation (no longer a full-width bar), with a note of what it will do: number of rounds (from settings), contractor levers only, nothing in the file changes.
