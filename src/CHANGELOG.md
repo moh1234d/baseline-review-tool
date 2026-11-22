@@ -1,4 +1,5 @@
 ## v9.26 (2026-11-22)
+- Activity status shown for every activity: a status chip (✓ Completed, ◐ In progress with % complete, ○ Not started) on each activity of an opened box, and an Activity Status column in the P6 view (the Cards view activity table already had it).
 - “Delaying now” hover note redesigned (design 2): red late badge, labelled rows (status, finish now / baseline, total float), a one-line reason, and the chain as chips with link types (cause in red, work in progress only waiting in amber).
 
 ## v9.25 (2026-11-22)
