@@ -1,3 +1,6 @@
+## v9.20 (2026-11-22)
+- Recovery planner comments: the empty 💬 icon is gone. Right-click any stage box, activity, WBS row or lever card for a menu: Add comment, View comments, All comments (on a phone or tablet: press and hold). Objects that already have comments keep the small amber count badge.
+
 ## v9.19 (2026-11-22)
 - Recovery planner: comments on any object — stage boxes (all views), activities in an opened box, rows and WBS bands of the P6 view, and lever cards. Click 💬 to read or add (optional name), delete a comment, or open “Comments” for the full list. Boxes with comments show an amber badge with the count. Comments are saved with the project settings (and the Drive session) and printed in the Word report.
 
