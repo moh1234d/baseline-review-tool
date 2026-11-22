@@ -1,3 +1,6 @@
+## v9.25 (2026-11-22)
+- P6 check report: detects a file whose progress was changed after it was last scheduled in P6 (finished activities whose actual dates differ from P6's stored dates — P6 makes them equal on F9). Instead of “Does not match P6” it now says “P6 dates are out of date” and explains: schedule in P6 (F9), export again.
+
 ## v9.24 (2026-11-22)
 - Fix “Delaying now”: the tool now follows the links that drive the current dates backwards from the end of each path while the predecessor is unfinished, and marks the first activity nothing unfinished drives. Before, it took the last activity in progress, which was wrong when an activity in progress is only waiting (for example its finish held by an FF link from work not started, under progress override). The hover note shows the chain (e.g. HVAC → FS → Wild Air → FF+2 → Dry Area) and names any work in progress that is only waiting.
 
