@@ -50,3 +50,30 @@ document.addEventListener('click', e => { const b = e.target.closest && e.target
   e.stopPropagation(); rpnMenuClose(); const a = b.dataset.rpnm; if (a === 'all') rpnOpen('*'); else rpnOpen(b.dataset.k); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') rpnMenuClose(); });
 window.addEventListener('scroll', rpnMenuClose, true); window.addEventListener('resize', rpnMenuClose);
+
+/* ---------- "delaying now": the activity at the data date that the rest of each path waits for ----------
+   In progress on the path -> the last one in the chain (it drives the next step); none in progress -> the first not started. */
+const RPDN = {};
+function rpDelayNow(T) { if (!T || !T.cars) return null; if (T._dnFor === T) return T._dn; T._dnFor = T;
+  T.cars.forEach(c => { c._dn = null; });
+  const rows = T.cars.flatMap(c => c.phase === 'end' ? [] : c.rows.filter(r => r.t).map(r => ({ r, c })));
+  const act = rows.filter(o => o.r.t.status === 'TK_Active'), pick = act.length ? act[act.length - 1] : rows.find(o => o.r.t.status === 'TK_NotStart');
+  if (!pick) return (T._dn = null);
+  const t = pick.r.t, a = pick.r.a, late = a && a.ef != null && t.ef != null ? Math.round(t.ef - a.ef) : (pick.r.slip || 0);
+  const others = act.filter(o => o !== pick).map(o => ({ code: o.r.t.code, name: o.r.t.name, late: o.r.a && o.r.a.ef != null && o.r.t.ef != null ? Math.round(o.r.t.ef - o.r.a.ef) : 0 }));
+  const info = { t, car: pick.c, code: t.code, name: t.name, st: t.status === 'TK_Active' ? 'In progress' : 'Not started', ef: t.ef, bf: a ? a.ef : null, late, tf: t.tfWd, others };
+  pick.c._dn = info; RPDN[t.code] = info; return (T._dn = info); }
+const rpDnTip = (info, rank) => { const tf = info.tf == null ? '' : ' · total float ' + (info.tf < 0 ? '−' : '') + Math.abs(Math.round(info.tf * 10) / 10) + ' wd', lt = info.late > 0 ? `<b class="r">+${info.late} d late</b>` : info.late < 0 ? `<b class="g">${info.late} d early</b>` : 'on time';
+  const big = info.others.filter(o => o.late > info.late).sort((a, b) => b.late - a.late)[0];
+  return `<div class="k">DELAYING ${rank ? 'PATH ' + rank + ' ' : 'THIS PATH '}NOW</div><div class="n">${esc(info.code)} · ${esc(info.name)}</div><div>${info.st} · finish ${esc(RPD(info.ef))}${info.bf != null ? ' against baseline ' + esc(RPD(info.bf)) : ''} · ${lt}${tf}</div><div class="mini">The rest of the path waits for this activity.${big ? ' It took over from ' + esc(big.code) + ' ' + esc(big.name) + ' (+' + big.late + ' d).' : ''}${info.others.length && !big ? ' Also in progress: ' + info.others.map(o => esc(o.code)).join(', ') + '.' : ''}</div>`; };
+const rpDnAttr = (info, rank) => info ? ` data-rpdn="${esc(info.code)}" data-rpdnr="${rank || ''}"` : '';
+const rpDnPinSvg = (x, y) => `<g data-rpdnpin="1" style="cursor:help"><rect x="${x}" y="${y}" width="98" height="16" rx="8" fill="#c0392b" stroke="#fff" stroke-width="1.2"/><text x="${x + 49}" y="${y + 11.5}" font-size="9" font-weight="800" fill="#fff" text-anchor="middle" letter-spacing=".3">DELAYING NOW</text></g>`;
+/* the hover note */
+function rpDnShow(el) { const info = RPDN[el.dataset.rpdn]; if (!info) return; let tp = document.getElementById('rpdn-tip'); if (!tp) { tp = document.createElement('div'); tp.id = 'rpdn-tip'; tp.setAttribute('role', 'tooltip'); document.body.appendChild(tp); }
+  tp.innerHTML = rpDnTip(info, +el.dataset.rpdnr || 0); tp.hidden = false; const b = el.getBoundingClientRect(), r = tp.getBoundingClientRect(), W = window.innerWidth, H = window.innerHeight;
+  let x = Math.max(6, Math.min(b.left, W - r.width - 6)), y = b.bottom + 10; tp.classList.toggle('up', false); if (y + r.height > H - 6) { y = Math.max(6, b.top - r.height - 10); tp.classList.add('up'); }
+  tp.style.left = x + 'px'; tp.style.top = y + 'px'; tp.style.setProperty('--ax', Math.max(14, Math.min(r.width - 20, b.left + Math.min(60, b.width / 2) - x)) + 'px'); }
+const rpDnHide = () => { const tp = document.getElementById('rpdn-tip'); if (tp) tp.hidden = true; };
+document.addEventListener('mouseover', e => { const el = e.target.closest && e.target.closest('[data-rpdn]'); if (el) rpDnShow(el); else if (!(e.target.closest && e.target.closest('#rpdn-tip'))) rpDnHide(); });
+document.addEventListener('click', e => { const p = e.target.closest && e.target.closest('[data-rpdnpin]'); if (!p) return; const el = p.closest('[data-rpdn]'); if (!el) return; e.stopPropagation(); e.preventDefault(); const tp = document.getElementById('rpdn-tip'); if (tp && !tp.hidden) rpDnHide(); else rpDnShow(el); }, true);
+window.addEventListener('scroll', rpDnHide, true); document.addEventListener('keydown', e => { if (e.key === 'Escape') rpDnHide(); });

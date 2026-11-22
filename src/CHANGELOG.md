@@ -1,3 +1,6 @@
+## v9.23 (2026-11-22)
+- Recovery planner: each path marks the activity delaying it now (the activity at the data date that the rest of the path waits for: the last one in progress, or the first not started). Its box gets a red outline and a DELAYING NOW pin in Cards, Network and Parallel plots; inside an opened box and in the P6 view the activity itself is marked. Hover the box (or tap the pin on a phone) for the note: activity, status, finish against baseline, days late, total float, and which activity it took over from.
+
 ## v9.22 (2026-11-22)
 - Fix: the P6 check report table in the Recovery planner was squeezed into a narrow column since v9.18 (a style for the P6 view's fold arrow had the same name as the report table). Renamed; the report is full width again.
 
