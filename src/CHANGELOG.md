@@ -1,5 +1,5 @@
 ## v9.27 (2026-11-22)
-- Activities: the “Own” delay figure is removed (it needed too much explanation). Activities in an opened box now show their status, dates and Total float only; the P6 view drops the “Delay added” column.
+- Activities: the “Own” delay figure is removed (it needed too much explanation). Activities in an opened box show their status, planned (baseline) start and finish against forecast start and finish (red later, green earlier, A = actual), original duration and total float; the P6 view drops the “Delay added” column and gains BL Start next to BL Finish.
 
 ## v9.26 (2026-11-22)
 - Activity status shown for every activity: a status chip (✓ Completed, ◐ In progress with % complete, ○ Not started) on each activity of an opened box, and an Activity Status column in the P6 view (the Cards view activity table already had it).
