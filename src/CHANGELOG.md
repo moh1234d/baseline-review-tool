@@ -1,3 +1,6 @@
+## v9.26 (2026-11-22)
+- “Delaying now” hover note redesigned (design 2): red late badge, labelled rows (status, finish now / baseline, total float), a one-line reason, and the chain as chips with link types (cause in red, work in progress only waiting in amber).
+
 ## v9.25 (2026-11-22)
 - P6 check report: detects a file whose progress was changed after it was last scheduled in P6 (finished activities whose actual dates differ from P6's stored dates — P6 makes them equal on F9). Instead of “Does not match P6” it now says “P6 dates are out of date” and explains: schedule in P6 (F9), export again.
 
