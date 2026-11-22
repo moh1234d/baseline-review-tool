@@ -1,3 +1,6 @@
+## v9.22 (2026-11-22)
+- Fix: the P6 check report table in the Recovery planner was squeezed into a narrow column since v9.18 (a style for the P6 view's fold arrow had the same name as the report table). Renamed; the report is full width again.
+
 ## v9.21 (2026-11-22)
 - Quick review Excel: relationship issues reorganised. New “Issues index” sheet (every rule, count, severity, link to its sheet); “All relationship issues” with separate Activity / Predecessor / Successor columns, link type and lag, grouped and banded by issue type; one sheet per issue type with the rule text and its own columns; “Links to review (P6)” with predecessor, successor, type and lag per row. Borders, banding, wrapped notes, frozen headers, filters, landscape print setup and page footers. File name carries the version.
 
