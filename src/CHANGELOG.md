@@ -1,3 +1,6 @@
+## v9.21 (2026-11-22)
+- Quick review Excel: relationship issues reorganised. New “Issues index” sheet (every rule, count, severity, link to its sheet); “All relationship issues” with separate Activity / Predecessor / Successor columns, link type and lag, grouped and banded by issue type; one sheet per issue type with the rule text and its own columns; “Links to review (P6)” with predecessor, successor, type and lag per row. Borders, banding, wrapped notes, frozen headers, filters, landscape print setup and page footers. File name carries the version.
+
 ## v9.20 (2026-11-22)
 - Recovery planner comments: the empty 💬 icon is gone. Right-click any stage box, activity, WBS row or lever card for a menu: Add comment, View comments, All comments (on a phone or tablet: press and hold). Objects that already have comments keep the small amber count badge.
 

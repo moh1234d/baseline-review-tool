@@ -28,7 +28,7 @@ E.run = function (M, cfg) {
   const add = (o) => { R.push(Object.assign({ status: 'pass', tier: 'normal', count: 0, items: [], evidence: [], single: false, action: '', why: '', source: '' }, o)); return R[R.length - 1]; };
   const row = (t, field, value, note) => ({ id: t.code, name: t.name, wbs: t.wbsPath, field: field || '', value: value == null ? '' : String(value), note: note || '' });
   const fx = (r, l, kind) => { r.fix = E.fixLink(l, kind); return r; };
-  const lrow = (l, field, value, note) => ({ id: l.from.code + ' → ' + l.to.code, name: l.from.name + ' → ' + l.to.name, wbs: l.from.wbsPath, field: field || '', value: value == null ? '' : String(value), note: note || '' });
+  const lrow = (l, field, value, note) => ({ id: l.from.code + ' → ' + l.to.code, name: l.from.name + ' → ' + l.to.name, wbs: l.from.wbsPath, field: field || '', value: value == null ? '' : String(value), note: note || '', link: true, pred: l.from.code, predName: l.from.name, predWbs: l.from.wbsPath, succ: l.to.code, succName: l.to.name, succWbs: l.to.wbsPath, type: l.type, lag: Math.round((l.lagWd || 0) * 10) / 10 });
   const r1 = x => Math.round(x * 10) / 10;
   const num = x => (x == null || isNaN(x)) ? '' : Number(x).toLocaleString('en-US', { maximumFractionDigits: 2 });
   const T = M.tasks, nonMile = T.filter(t => !t.isMile);

@@ -236,8 +236,46 @@ async function qExport() {
   const rs = wb.addWorksheet('Relationships'); title(rs, 'Relationship rules', info, 6); put(rs, 4, ['Statistic', 'Value']); hdr(rs, 4);
   [['Links', q.rel.total], ['Finish-to-Start', q.rel.types.FS], ['Start-to-Start', q.rel.types.SS], ['Finish-to-Finish', q.rel.types.FF], ['Start-to-Finish', q.rel.types.SF], ['Positive lags', q.rel.lagPos], ['Negative lags', q.rel.lagNeg], ['No predecessor', q.rel.noPred], ['No successor', q.rel.noSucc]].forEach(r => rs.addRow(r));
   rs.addRow([]); const h2 = rs.rowCount + 1; put(rs, h2, ['Rule', 'Result', 'Summary', 'Rule text']); hdr(rs, h2); rules.forEach(r => rs.addRow([r.id + ' ' + r.title, r.status === 'fail' ? r.count + ' found' : r.status, r.summary, r.rule])); rs.columns = [{ width: 46 }, { width: 16 }, { width: 60 }, { width: 80 }];
-  const all = []; rules.forEach(r => r.items.forEach(i => all.push([r.id + ' ' + r.title, i.id, i.name, i.wbs, i.field, i.value, i.note, i.fix || ''])));
-  tableSheet('Relationship issues', 'Every activity or link that breaks a rule', info, ['Rule', 'ID', 'Activity / link', 'WBS', 'Issue', 'Value', 'Note', 'Suggested correct logic'], all, [34, 28, 62, 44, 30, 28, 30, 90]);
+  /* ---- relationship issues: an index, one combined list and one sheet per issue type; links in separate Predecessor / Successor columns ---- */
+  const LTYPE = { FS: 'FS', SS: 'SS', FF: 'FF', SF: 'SF', PR_FS: 'FS', PR_SS: 'SS', PR_FF: 'FF', PR_SF: 'SF' };
+  const isLink = i => !!(i && i.link);
+  const failed = rules.filter(r => r.items && r.items.length);
+  const thin = { style: 'thin', color: { argb: 'FFD5DCE4' } }, BAND = 'FFF4F7FB', SECT = 'FFE8EEF6';
+  const styleRows = (ws, from, to, ncol, wrapCols, bandBy) => { let band = false, last; for (let r = from; r <= to; r++) { const row = ws.getRow(r); if (bandBy) { const v = row.getCell(bandBy).value; if (v !== last) { band = !band; last = v; } } else band = (r - from) % 2 === 1;
+      for (let c = 1; c <= ncol; c++) { const cell = row.getCell(c); cell.border = { top: thin, bottom: thin, left: thin, right: thin }; cell.alignment = { vertical: 'top', wrapText: wrapCols.includes(c) }; if (band) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BAND } }; } } };
+  const pageSet = ws => { ws.pageSetup = { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } }; ws.headerFooter = { oddFooter: '&L' + (S.cfg.projectName || '') + ' — Quick review v' + E.VERSION + '&RPage &P of &N' }; };
+  const used = new Set(['Summary', 'Loading profile', 'Cash flow', 'Relationships']), sheetName = r => { let n = (r.id + ' ' + r.title).replace(/[\[\]\*\?\/\\:]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31).trim(), k = 2; while (used.has(n)) n = n.slice(0, 28) + ' ' + k++; used.add(n); return n; };
+  const names = new Map(failed.map(r => [r, sheetName(r)]));
+  /* index */
+  const ix = wb.addWorksheet('Issues index', { views: [{ state: 'frozen', ySplit: 4 }] }); title(ix, 'Relationship issues — index', info, 7); ix.columns = [{ width: 8 }, { width: 50 }, { width: 18 }, { width: 10 }, { width: 12 }, { width: 80 }, { width: 22 }];
+  put(ix, 4, ['Rule', 'Issue type', 'Group', 'Severity', 'Items', 'What the rule checks', 'Open the list']); hdr(ix, 4);
+  rules.forEach(r => { const n = r.items ? r.items.length : 0, row = ix.addRow([r.id, r.title, r.group || '', r.tier === 'major' ? 'Major' : 'Normal', n, r.rule || r.summary || '', n ? names.get(r) : (r.status === 'pass' ? 'Passed' : r.status)]);
+    if (n) { const c = row.getCell(7); c.value = { text: '→ ' + names.get(r), hyperlink: "#'" + names.get(r) + "'!A1" }; c.font = { color: { argb: 'FF1F5FBF' }, underline: true }; } else row.getCell(7).font = { color: { argb: 'FF2E8B57' } };
+    if (n && r.tier === 'major') row.getCell(4).font = { bold: true, color: { argb: 'FFC0392B' } }; });
+  styleRows(ix, 5, ix.rowCount, 7, [2, 6]); pageSet(ix);
+  /* combined list, grouped by issue type */
+  const AH = ['Rule', 'Issue type', 'Activity ID', 'Activity name', 'Predecessor ID', 'Predecessor name', 'Successor ID', 'Successor name', 'Link type', 'Lag (d)', 'WBS', 'Issue', 'Value', 'Note', 'Suggested correct logic'];
+  const allRows = []; failed.forEach(r => r.items.forEach(i => allRows.push(isLink(i) ? [r.id, r.title, '', '', i.pred, i.predName, i.succ, i.succName, LTYPE[i.type] || i.type || '', i.lag, i.predWbs || i.wbs, i.field, i.value, i.note, i.fix || ''] : [r.id, r.title, i.id, i.name, '', '', '', '', '', '', i.wbs, i.field, i.value, i.note, i.fix || ''])));
+  const ws1 = tableSheet('All relationship issues', 'Every activity or link that breaks a rule, grouped by issue type', info, AH, allRows, [7, 34, 22, 40, 22, 40, 22, 40, 9, 8, 40, 24, 22, 30, 70]);
+  styleRows(ws1, 5, ws1.rowCount, AH.length, [2, 4, 6, 8, 11, 14, 15], 1); ws1.getColumn(10).numFmt = '0.0'; pageSet(ws1);
+  /* one sheet per issue type */
+  failed.forEach(r => { const anyLink = r.items.some(isLink), anyAct = r.items.some(i => !isLink(i)), nm = names.get(r);
+    const H = anyLink ? ['#', 'Predecessor ID', 'Predecessor name', 'Successor ID', 'Successor name', 'Link type', 'Lag (d)', 'WBS (predecessor)'].concat(anyAct ? ['Activity ID (activity issues)'] : []).concat(['Issue', 'Value', 'Note', 'Suggested correct logic'])
+      : ['#', 'Activity ID', 'Activity name', 'WBS', 'Issue', 'Value', 'Note', 'Suggested correct logic'];
+    const rows = r.items.map((i, k) => anyLink ? [k + 1, isLink(i) ? i.pred : '', isLink(i) ? i.predName : i.name, isLink(i) ? i.succ : '', isLink(i) ? i.succName : '', isLink(i) ? LTYPE[i.type] || i.type || '' : '', isLink(i) ? i.lag : '', isLink(i) ? i.predWbs || i.wbs : i.wbs].concat(anyAct ? [isLink(i) ? '' : i.id] : []).concat([i.field, i.value, i.note, i.fix || ''])
+      : [k + 1, i.id, i.name, i.wbs, i.field, i.value, i.note, i.fix || '']);
+    const W = anyLink ? [6, 22, 42, 22, 42, 9, 8, 40].concat(anyAct ? [22] : []).concat([24, 22, 30, 70]) : [6, 24, 50, 44, 26, 24, 34, 80];
+    const ws = wb.addWorksheet(nm, { views: [{ state: 'frozen', ySplit: 6, xSplit: anyLink ? 0 : 2 }] }); ws.columns = W.map(w => ({ width: w }));
+    ws.mergeCells(1, 1, 1, H.length); ws.getCell('A1').value = r.id + ' — ' + r.title; ws.getCell('A1').font = { size: 15, bold: true, color: { argb: NAVY } };
+    ws.getCell('A2').value = info; ws.getCell('A2').font = { italic: true, color: { argb: 'FF5B6B7B' } };
+    ws.mergeCells(3, 1, 3, H.length); ws.getCell('A3').value = (r.rule || '') ; ws.getCell('A3').alignment = { wrapText: true, vertical: 'top' }; ws.getRow(3).height = 32; ws.getCell('A3').font = { color: { argb: 'FF333F4F' } };
+    ws.mergeCells(4, 1, 4, H.length); ws.getCell('A4').value = (r.tier === 'major' ? 'MAJOR · ' : '') + r.items.length + ' item(s)' + (r.summary ? ' · ' + r.summary : ''); ws.getCell('A4').font = { bold: true, color: { argb: r.tier === 'major' ? 'FFC0392B' : 'FF1B2A41' } }; ws.getCell('A4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SECT } };
+    const back = ws.getCell(2, H.length); back.value = { text: '← Issues index', hyperlink: "#'Issues index'!A1" }; back.font = { color: { argb: 'FF1F5FBF' }, underline: true }; back.alignment = { horizontal: 'right' };
+    put(ws, 6, H); hdr(ws, 6); rows.forEach(x => ws.addRow(x)); ws.autoFilter = { from: { row: 6, column: 1 }, to: { row: 6 + rows.length, column: H.length } };
+    styleRows(ws, 7, ws.rowCount, H.length, anyLink ? [3, 5, 8, H.length - 1, H.length] : [3, 4, 7, 8]); if (anyLink) ws.getColumn(7).numFmt = '0.0'; pageSet(ws); });
+  /* a P6-ready list of the links only (predecessor, successor, type, lag) */
+  const lk = []; failed.forEach(r => r.items.filter(isLink).forEach(i => lk.push([i.pred, i.succ, LTYPE[i.type] || i.type || '', i.lag, r.id + ' ' + r.title, i.fix || ''])));
+  if (lk.length) { const wl = tableSheet('Links to review (P6)', 'Links flagged by the rules — one row per link, ready to filter and correct in P6', info, ['Predecessor', 'Successor', 'Relationship type', 'Lag (d)', 'Issue type', 'Suggested correct logic'], lk, [24, 24, 16, 10, 46, 90]); styleRows(wl, 5, wl.rowCount, 6, [5, 6], 5); wl.getColumn(4).numFmt = '0.0'; pageSet(wl); }
   // manpower
   const ms = tableSheet('Manpower', 'Manpower and equipment by month', info, ['Month', 'Labour – average people', 'Labour – peak day', 'Equipment – average units', 'Equipment – peak day'], q.man.months.map(m => [fmtM(m.ym), Math.round(m.lab * 10) / 10, Math.round(m.labPeak * 10) / 10, Math.round(m.eq * 10) / 10, Math.round(m.eqPeak * 10) / 10]), [14, 24, 20, 26, 22]);
   ms.addRow([]); const h3 = ms.rowCount + 1; put(ms, h3, ['Resource', 'Type', 'Activities', 'Units', 'Cost (SAR)']); hdr(ms, h3); q.res.forEach(r => ms.addRow([r.name, r.typeName, r.tasks, Math.round(r.qty), Math.round(r.cost)]));
@@ -254,7 +292,7 @@ async function qExport() {
   tableSheet('Calendar by category', 'Activities per calendar, by category', info, ['Category', 'Activities'].concat(q.cal.used.map(c => c.name + ' (' + c.week + ')')).concat(['Expected week', 'Activities that differ']), mat(q.cal.byCat, 'cat'), [28, 12].concat(q.cal.used.map(() => 22)).concat([14, 18]));
   tableSheet('Calendar by WBS', 'Activities per calendar, by WBS branch', info, ['WBS branch', 'Activities'].concat(q.cal.used.map(c => c.name + ' (' + c.week + ')')), mat(q.cal.byWbs, 'wbs'), [50, 12].concat(q.cal.used.map(() => 22)));
   const al = S.M.tasks.map(t => [t.code, t.name, t.wbsPath, (S.M.cal[t.clndr] || {}).name || t.clndr, q.cal.keyOf(t)]); tableSheet('Calendar by activity', 'Calendar assigned to every activity', info, ['ID', 'Activity', 'WBS', 'Calendar', 'Category'], al, [28, 60, 50, 36, 18]);
-  const buf = await wb.xlsx.writeBuffer(); download(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), (S.cfg.projectName || 'Project') + '_Quick_Review.xlsx');
+  const buf = await wb.xlsx.writeBuffer(); download(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), (S.cfg.projectName || 'Project').replace(/[^\w.-]+/g, '_') + '_Quick_Review_v' + E.VERSION + '.xlsx');
 }
 
 /* ---------- events ---------- */
