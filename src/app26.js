@@ -100,9 +100,17 @@ const rpStat = t => t.status === 'TK_Complete' ? ['✓ Completed', '#4b5563', '#
 const rpOpenPer = () => rpClamp(S.cfg.rpOpenPer, 3, 30, 12);
 const rpLkTxt = ls => ls.map(l => l.type + (l.lagWd ? (l.lagWd > 0 ? '+' : '') + Math.round(l.lagWd * 10) / 10 : '')).join(' · ');
 function rpOpenFrame(c, prev, next) {
-  const rows = c.rows, n = rows.length, per = Math.min(n, rpOpenPer()), lines = Math.ceil(n / per), mw = 176, mh = 132, mg = 66, lg = 54, L0 = 50, R0 = 50, head = 46, bot = 56;
-  const FW = Math.max(380, L0 + per * mw + (per - 1) * mg + R0), FH = head + lines * mh + (lines - 1) * lg + bot, st = rpCarStats(c);
-  const pos = rows.map((r, i) => [L0 + (i % per) * (mw + mg), head + Math.floor(i / per) * (mh + lg)]);
+  const rows = c.rows, n = rows.length, mw = 176, mh = 132, mg = 74, lg = 54, sg = 34, L0 = 50, R0 = 50, head = 46, bot = 56, st = rpCarStats(c);
+  /* v9.28: an activity linked to the one before only by SS and/or FF runs in parallel with it, so it is drawn below it in the same column;
+     FS (or SF) moves to the next column, as a sequence */
+  const lkTy = i => i ? rows[i].t.pre.filter(l => l.from === rows[i - 1].t).map(l => String(l.type || '').replace('PR_', '')) : [];
+  const par = i => { const ts = lkTy(i); return ts.length > 0 && !ts.includes('FS') && !ts.includes('SF'); };
+  let col = -1, stk = 0; const cell = rows.map((r, i) => { if (i && par(i)) stk++; else { col++; stk = 0; } return [col, stk]; });
+  const nCols = col + 1, per = Math.min(nCols, rpOpenPer()), lines = Math.ceil(nCols / per), lineN = Array(lines).fill(1);
+  cell.forEach(([cc, sk]) => { const ln = Math.floor(cc / per); lineN[ln] = Math.max(lineN[ln], sk + 1); });
+  const lineH = lineN.map(k => k * mh + (k - 1) * sg), lineTop = lineH.map((h0, i) => lineH.slice(0, i).reduce((a, b) => a + b + lg, 0));
+  const FW = Math.max(380, L0 + per * mw + (per - 1) * mg + R0), FH = head + lineH.reduce((a, b) => a + b, 0) + (lines - 1) * lg + bot;
+  const pos = cell.map(([cc, sk]) => [L0 + (cc % per) * (mw + mg), head + lineTop[Math.floor(cc / per)] + sk * (mh + sg)]);
   const ids = new Map(rows.map((r, i) => [r.t, i]));
   const draw = (x, y, h) => { let s = `<g class="rp-open"${rpnA(rpnKeyCar(c), c.title)}><rect x="${x}" y="${y}" width="${FW}" height="${FH}" rx="12" fill="#f5f3ff" stroke="${RP_DD}" stroke-width="1.6" stroke-dasharray="7 4"/>`;
     s += `<text x="${x + 14}" y="${y + 19}" font-size="12" font-weight="800" fill="#4c1d95">${esc(rpFit('▾ ' + c.title + ' — ' + n + ' activit' + (n === 1 ? 'y' : 'ies'), FW - 140, 12, true))}</text>`;
@@ -122,9 +130,16 @@ function rpOpenFrame(c, prev, next) {
         s += `<line x1="${bx + 6}" x2="${bx + mw - 6}" y1="${by + 99}" y2="${by + 99}" stroke="#e3e8ef"/>`; }
       [['Orig. duration', t.durWd == null ? '–' : Math.round(t.durWd * 10) / 10 + ' d', '#1d2433'], ['Total float', tf, tfc]].forEach(([l, v, vc], k) => { const tx = bx + 8 + k * 80; s += `<text x="${tx}" y="${by + 112}" font-size="7.5" fill="#5e6a7d">${l}</text><text x="${tx}" y="${by + 124}" font-size="10" font-weight="700" fill="${vc}">${esc(v)}</text>`; });
       s += rpnSvg(rpnKeyAct(t), bx + mw - 36, by + mh - 8, t.code + ' — ' + t.name) + '</g>';
-      if (i) { const [px0, py0] = pos[i - 1], ls = t.pre.filter(l => l.from === rows[i - 1].t), lab = rpLkTxt(ls);
-        if (py0 === ay) { const x1 = x + px0 + mw, x2 = bx, yy = by + mh / 2; s += `<path d="M${x1} ${yy} L${x2 - 1} ${yy}" stroke="#1d2433" stroke-width="1.8" marker-end="url(#rpa)"/>${lab ? `<text x="${(x1 + x2) / 2}" y="${yy - 6}" font-size="9" font-weight="700" fill="#1d2433" text-anchor="middle">${esc(lab)}</text>` : ''}`; }
-        else { const x1 = x + px0 + mw / 2, y1 = y + py0 + mh, ym = y1 + lg / 2, x2 = bx + mw / 2; s += `<path d="M${x1} ${y1} V${ym} H${x2} V${by - 1}" fill="none" stroke="#1d2433" stroke-width="1.8" marker-end="url(#rpa)"/>${lab ? `<text x="${x1 + 6}" y="${ym - 5}" font-size="9" font-weight="700" fill="#1d2433">${esc(lab)}</text>` : ''}`; } } });
+      if (i) { const [px0, py0] = pos[i - 1], ls = t.pre.filter(l => l.from === rows[i - 1].t), lab = rpLkTxt(ls), ty = ls.map(l => String(l.type || '').replace('PR_', '')), X0 = x + px0, Y0 = y + py0, lbl = (tx, ty2, tt, anc) => tt ? `<text x="${tx}" y="${ty2}" font-size="9" font-weight="700" fill="#1d2433" text-anchor="${anc || 'middle'}">${esc(tt)}</text>` : '';
+        if (par(i)) { /* parallel: SS bracket on the left (start to start), FF bracket on the right (finish to finish) */
+          const ss = ls.filter(l => /SS$/.test(l.type)), ff = ls.filter(l => /FF$/.test(l.type)), ya = Y0 + mh * 0.3, yb2 = by + mh * 0.3, yc = Y0 + mh * 0.75, yd = by + mh * 0.75;
+          if (ss.length) s += `<path d="M${X0} ${ya} H${X0 - 18} V${yb2} H${bx - 1}" fill="none" stroke="#1d2433" stroke-width="1.8" marker-end="url(#rpa)"/>` + lbl(X0 - 22, (ya + yb2) / 2 + 3, rpLkTxt(ss), 'end');
+          if (ff.length) s += `<path d="M${X0 + mw} ${yc} H${X0 + mw + 18} V${yd} H${bx + mw + 1}" fill="none" stroke="#1d2433" stroke-width="1.8" marker-end="url(#rpa)"/>` + lbl(X0 + mw + 22, (yc + yd) / 2 + 3, rpLkTxt(ff), 'start'); }
+        else if (cell[i][0] % per !== 0 || cell[i][0] === 0) { /* next column on the same line */
+          const x1 = X0 + mw, y1 = Y0 + mh / 2, x2 = bx, y2 = by + mh / 2, xm = x1 + (x2 - x1) / 2;
+          s += `<path d="M${x1} ${y1} H${xm} V${y2} H${x2 - 1}" fill="none" stroke="#1d2433" stroke-width="1.8" marker-end="url(#rpa)"/>` + lbl(xm, Math.min(y1, y2) - 6, lab); }
+        else { /* wraps to the next line */
+          const x1 = X0 + mw / 2, y1 = Y0 + mh, x2 = bx + mw / 2, ym = by - lg / 2; s += `<path d="M${x1} ${y1} V${ym} H${x2} V${by - 1}" fill="none" stroke="#1d2433" stroke-width="1.8" marker-end="url(#rpa)"/>` + lbl(x1 + 6, ym - 5, lab, 'start'); } } });
     /* other links between activities of this card that are not the driving one (same line only, max 8) */
     let k = 0, more = 0; rows.forEach((r, j) => r.t.pre.forEach(l => { const i = ids.get(l.from); if (i == null || i === j - 1) return; if (pos[i][1] !== pos[j][1] || k >= 8) { more++; return; } k++;
       const a = x + pos[i][0] + mw / 2, b = x + pos[j][0] + mw / 2, yb = y + pos[i][1] + mh, dy = 22 + 8 * (k % 3); s += `<path d="M${a} ${yb} C${a} ${yb + dy} ${b} ${yb + dy} ${b} ${yb + 2}" fill="none" stroke="#8793a6" stroke-width="1.2" stroke-dasharray="4 4" marker-end="url(#rpa)"/><text x="${(a + b) / 2}" y="${yb + dy - 4}" font-size="8.5" fill="#5e6a7d" text-anchor="middle">${esc(rpLkTxt([l]))} · not driving</text>`; }));
@@ -133,7 +148,7 @@ function rpOpenFrame(c, prev, next) {
     const f0 = rows[0].t, lin = prev ? f0.pre.filter(l => prev.rows.some(q => q.t === l.from)) : [], ym = y + h / 2, fy = y + pos[0][1] + mh / 2;
     s += `<path d="M${x} ${ym} H${x + L0 / 2} V${fy} H${x + L0 - 1}" fill="none" stroke="#c0392b" stroke-width="1.8" marker-end="url(#rpa)"/>`;
     if (lin.length) s += `<text x="${x + 4}" y="${Math.min(ym, fy) - 6}" font-size="9" font-weight="700" fill="#c0392b">${esc(rpLkTxt(lin))}<title>from ${esc(lin[0].from.code + ' — ' + lin[0].from.name)}</title></text>`;
-    const lst = rows[n - 1].t, [lx, ly] = pos[n - 1], lout = next ? next.rows[0].t.pre.filter(l => l.from === lst) : [], ox = x + lx + mw, oy = y + ly + mh / 2;
+    const lst = rows[n - 1].t, [lx, ly] = pos[n - 1], lout = next ? next.rows[0].t.pre.filter(l => l.from === lst) : [], ox = x + lx + mw, oy = y + ly + mh * 0.45;
     if (next) { s += `<path d="M${ox} ${oy} H${x + FW - R0 / 2} V${ym} H${x + FW}" fill="none" stroke="#1d2433" stroke-width="1.8"/>`; if (lout.length) s += `<text x="${ox + 6}" y="${oy - 6}" font-size="9" font-weight="700" fill="#1d2433">${esc(rpLkTxt(lout))}</text>`; }
     return s + '</g>'; };
   return { w: FW, h: FH, draw };
