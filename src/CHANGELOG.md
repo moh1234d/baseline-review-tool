@@ -1,3 +1,6 @@
+## v9.18 (2026-11-22)
+- Recovery planner: new view E · P6 view. Pick any path (Path 1 longest, 2, 3 …) and see its activities in a P6-style layout: WBS bands in P6 colours (fold / unfold, expand / collapse all) or plain path order, columns Activity ID, Name, % Complete, Original and Remaining Duration, Start, Finish (A = actual), BL Finish, Delay added, Total Float, and a Gantt with actual / remaining / critical bars, baseline line, milestones and the data date. Month width is a setting.
+
 ## v9.17 (2026-11-22)
 - Recovery planner, Parallel plots and Network: click a box to open it into its activities (code, name, dates, duration, total float, delay each one added or recovered), with the driving links between them (type and lag), the link in from the previous box and out to the next, and other links between them dashed. Collapse closes it; one box open at a time. Activities per line is a setting.
 - Recovery planner: data date line with one distinct look in every view (violet, solid, white halo, DATA DATE tag with the date): Parallel plots, Logic Gantt and Cards. In Parallel plots each path is shifted sideways so its data date lines up with Path 1's, giving one straight line (left = done, crossed box = in progress, right = to come). Setup can switch this to a mark on each path, or to no line (Logic Gantt only).
