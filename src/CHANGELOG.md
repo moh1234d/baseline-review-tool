@@ -1,3 +1,6 @@
+## v9.24 (2026-11-22)
+- Fix “Delaying now”: the tool now follows the links that drive the current dates backwards from the end of each path while the predecessor is unfinished, and marks the first activity nothing unfinished drives. Before, it took the last activity in progress, which was wrong when an activity in progress is only waiting (for example its finish held by an FF link from work not started, under progress override). The hover note shows the chain (e.g. HVAC → FS → Wild Air → FF+2 → Dry Area) and names any work in progress that is only waiting.
+
 ## v9.23 (2026-11-22)
 - Recovery planner: each path marks the activity delaying it now (the activity at the data date that the rest of the path waits for: the last one in progress, or the first not started). Its box gets a red outline and a DELAYING NOW pin in Cards, Network and Parallel plots; inside an opened box and in the P6 view the activity itself is marked. Hover the box (or tap the pin on a phone) for the note: activity, status, finish against baseline, days late, total float, and which activity it took over from.
 

@@ -53,20 +53,33 @@ window.addEventListener('scroll', rpnMenuClose, true); window.addEventListener('
 
 /* ---------- "delaying now": the activity at the data date that the rest of each path waits for ----------
    In progress on the path -> the last one in the chain (it drives the next step); none in progress -> the first not started. */
-const RPDN = {};
+const RPDN = {}; let rpDnSeq = 0;
 function rpDelayNow(T) { if (!T || !T.cars) return null; if (T._dnFor === T) return T._dn; T._dnFor = T;
   T.cars.forEach(c => { c._dn = null; });
-  const rows = T.cars.flatMap(c => c.phase === 'end' ? [] : c.rows.filter(r => r.t).map(r => ({ r, c })));
-  const act = rows.filter(o => o.r.t.status === 'TK_Active'), pick = act.length ? act[act.length - 1] : rows.find(o => o.r.t.status === 'TK_NotStart');
-  if (!pick) return (T._dn = null);
-  const t = pick.r.t, a = pick.r.a, late = a && a.ef != null && t.ef != null ? Math.round(t.ef - a.ef) : (pick.r.slip || 0);
-  const others = act.filter(o => o !== pick).map(o => ({ code: o.r.t.code, name: o.r.t.name, late: o.r.a && o.r.a.ef != null && o.r.t.ef != null ? Math.round(o.r.t.ef - o.r.a.ef) : 0 }));
-  const info = { t, car: pick.c, code: t.code, name: t.name, st: t.status === 'TK_Active' ? 'In progress' : 'Not started', ef: t.ef, bf: a ? a.ef : null, late, tf: t.tfWd, others };
-  pick.c._dn = info; RPDN[t.code] = info; return (T._dn = info); }
+  const R = S.rp, M = R && R.B && R.B.M; if (!M) return (T._dn = null);
+  /* v9.24: follow the links that drive the CURRENT dates (from the tool's recalculation of the update, same options as the file),
+     backwards from the end of the path, while the predecessor is unfinished. The first activity that nothing unfinished drives
+     is the one the rest of the path is waiting for. An activity in progress can be waiting too (e.g. its finish held by an FF link). */
+  if (!R.B._rc || R.B._rcFor !== M) { try { R.B._rc = E.recalc(M); R.B._rcFor = M; } catch (e) { R.B._rc = null; } }
+  const rc = R.B._rc, rows = T.cars.flatMap(c => c.rows.filter(r => r.t).map(r => ({ r, c }))), byId = new Map(rows.map(o => [o.r.t.id, o]));
+  const open = t => t && t.status !== 'TK_Complete' && t.type !== 'TT_LOE' && t.type !== 'TT_WBS';
+  const last = [...rows].reverse().find(o => open(o.r.t)); if (!last) return (T._dn = null);
+  let t = last.r.t; const walk = [t], via = [], seen = new Set([t.id]);
+  if (rc && rc.drv) for (let k = 0; k < 4000; k++) { const l = rc.drv.get(t.id); if (!l || !open(l.from) || seen.has(l.from.id)) break; via.unshift(l); t = l.from; walk.unshift(t); seen.add(t.id); }
+  else { const act = rows.filter(o => o.r.t.status === 'TK_Active'), pk = act.length ? act[act.length - 1] : rows.find(o => o.r.t.status === 'TK_NotStart'); if (pk) { t = pk.r.t; walk.splice(0, walk.length, t); } }
+  const own = byId.get(t.id), a = own ? own.r.a : (R.A && R.A.M && R.A.M.tasks.find(x => x.code === t.code)) || null;
+  const car = own ? own.c : T.cars.find(c => c.phase !== 'done' && c.phase !== 'end') || T.cars[0];
+  const late = a && a.ef != null && t.ef != null ? Math.round(t.ef - a.ef) : (own ? own.r.slip || 0 : 0);
+  const lk = l => (({ PR_FS: 'FS', PR_SS: 'SS', PR_FF: 'FF', PR_SF: 'SF' })[l.type] || l.type) + (l.lagWd ? (l.lagWd > 0 ? '+' : '') + Math.round(l.lagWd * 10) / 10 : '');
+  /* how it holds the path: the first few steps after it, and the first activity in progress that is waiting on it */
+  const steps = walk.slice(0, 5).map((x, i) => (i ? ' → ' + lk(via[i - 1]) + ' → ' : '') + x.code + (x.status === 'TK_Active' && i ? ' (in progress, waiting)' : ''));
+  const heldAct = walk.slice(1).filter(x => x.status === 'TK_Active');
+  const info = { t, car, code: t.code, name: t.name, st: t.status === 'TK_Active' ? 'In progress' : 'Not started', ef: t.ef, bf: a ? a.ef : null, late, tf: t.tfWd, chain: steps.join('') + (walk.length > 5 ? ' → … (' + (walk.length - 5) + ' more)' : ''), held: heldAct.map(x => x.code), outside: !own };
+  info.key = t.code + '#' + (++rpDnSeq); if (car) car._dn = info; RPDN[info.key] = info; return (T._dn = info); }
 const rpDnTip = (info, rank) => { const tf = info.tf == null ? '' : ' · total float ' + (info.tf < 0 ? '−' : '') + Math.abs(Math.round(info.tf * 10) / 10) + ' wd', lt = info.late > 0 ? `<b class="r">+${info.late} d late</b>` : info.late < 0 ? `<b class="g">${info.late} d early</b>` : 'on time';
-  const big = info.others.filter(o => o.late > info.late).sort((a, b) => b.late - a.late)[0];
-  return `<div class="k">DELAYING ${rank ? 'PATH ' + rank + ' ' : 'THIS PATH '}NOW</div><div class="dn-n">${esc(info.code)} · ${esc(info.name)}</div><div>${info.st} · finish ${esc(RPD(info.ef))}${info.bf != null ? ' against baseline ' + esc(RPD(info.bf)) : ''} · ${lt}${tf}</div><div class="mini">The rest of the path waits for this activity.${big ? ' It took over from ' + esc(big.code) + ' ' + esc(big.name) + ' (+' + big.late + ' d).' : ''}${info.others.length && !big ? ' Also in progress: ' + info.others.map(o => esc(o.code)).join(', ') + '.' : ''}</div>`; };
-const rpDnAttr = (info, rank) => info ? ` data-rpdn="${esc(info.code)}" data-rpdnr="${rank || ''}"` : '';
+  return `<div class="k">DELAYING ${rank ? 'PATH ' + rank + ' ' : 'THIS PATH '}NOW</div><div class="dn-n">${esc(info.code)} · ${esc(info.name)}</div><div>${info.st} · finish ${esc(RPD(info.ef))}${info.bf != null ? ' against baseline ' + esc(RPD(info.bf)) : ''} · ${lt}${tf}</div>`
+    + `<div class="mini">${info.outside ? 'It sits on the path this one branches from; this path waits for it. ' : 'Nothing unfinished drives it: the rest of the path waits for it. '}${info.held.length ? 'Work in progress further on is only waiting for it (' + esc(info.held.slice(0, 3).join(', ')) + (info.held.length > 3 ? ' …' : '') + ').' : ''}</div>${info.chain.includes('→') ? `<div class="mini">Chain: ${esc(info.chain)}</div>` : ''}`; };
+const rpDnAttr = (info, rank) => info ? ` data-rpdn="${esc(info.key)}" data-rpdnr="${rank || ''}"` : '';
 const rpDnPinSvg = (x, y) => `<g data-rpdnpin="1" style="cursor:help"><rect x="${x}" y="${y}" width="98" height="16" rx="8" fill="#c0392b" stroke="#fff" stroke-width="1.2"/><text x="${x + 49}" y="${y + 11.5}" font-size="9" font-weight="800" fill="#fff" text-anchor="middle" letter-spacing=".3">DELAYING NOW</text></g>`;
 /* the hover note */
 function rpDnShow(el) { const info = RPDN[el.dataset.rpdn]; if (!info) return; let tp = document.getElementById('rpdn-tip'); if (!tp) { tp = document.createElement('div'); tp.id = 'rpdn-tip'; tp.setAttribute('role', 'tooltip'); document.body.appendChild(tp); }
