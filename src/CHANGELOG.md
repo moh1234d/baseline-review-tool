@@ -1,3 +1,6 @@
+## v9.19 (2026-11-22)
+- Recovery planner: comments on any object — stage boxes (all views), activities in an opened box, rows and WBS bands of the P6 view, and lever cards. Click 💬 to read or add (optional name), delete a comment, or open “Comments” for the full list. Boxes with comments show an amber badge with the count. Comments are saved with the project settings (and the Drive session) and printed in the Word report.
+
 ## v9.18 (2026-11-22)
 - Recovery planner: new view E · P6 view. Pick any path (Path 1 longest, 2, 3 …) and see its activities in a P6-style layout: WBS bands in P6 colours (fold / unfold, expand / collapse all) or plain path order, columns Activity ID, Name, % Complete, Original and Remaining Duration, Start, Finish (A = actual), BL Finish, Delay added, Total Float, and a Gantt with actual / remaining / critical bars, baseline line, milestones and the data date. Month width is a setting.
 
