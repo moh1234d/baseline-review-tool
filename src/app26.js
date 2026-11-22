@@ -135,6 +135,8 @@ function rpOpenFrame(c, prev, next) {
           const ss = ls.filter(l => /SS$/.test(l.type)), ff = ls.filter(l => /FF$/.test(l.type)), ya = Y0 + mh * 0.3, yb2 = by + mh * 0.3, yc = Y0 + mh * 0.75, yd = by + mh * 0.75;
           if (ss.length) s += `<path d="M${X0} ${ya} H${X0 - 18} V${yb2} H${bx - 1}" fill="none" stroke="#1d2433" stroke-width="1.8" marker-end="url(#rpa)"/>` + lbl(X0 - 22, (ya + yb2) / 2 + 3, rpLkTxt(ss), 'end');
           if (ff.length) s += `<path d="M${X0 + mw} ${yc} H${X0 + mw + 18} V${yd} H${bx + mw + 1}" fill="none" stroke="#1d2433" stroke-width="1.8" marker-end="url(#rpa)"/>` + lbl(X0 + mw + 22, (yc + yd) / 2 + 3, rpLkTxt(ff), 'start'); }
+        else if (ty.length && !ty.includes('FS') && ty.includes('SF')) { /* SF: from the predecessor's start (left) to the successor's finish (right) */
+          const y1 = Y0 + mh / 2, y2 = by + mh / 2; s += `<path d="M${X0} ${y1} H${X0 - 18} V${Y0 + mh + 10} H${bx + mw + 18} V${y2} H${bx + mw + 1}" fill="none" stroke="#1d2433" stroke-width="1.8" marker-end="url(#rpa)"/>` + lbl((X0 + bx + mw) / 2, Y0 + mh + 22, lab); }
         else if (cell[i][0] % per !== 0 || cell[i][0] === 0) { /* next column on the same line */
           const x1 = X0 + mw, y1 = Y0 + mh / 2, x2 = bx, y2 = by + mh / 2, xm = x1 + (x2 - x1) / 2;
           s += `<path d="M${x1} ${y1} H${xm} V${y2} H${x2 - 1}" fill="none" stroke="#1d2433" stroke-width="1.8" marker-end="url(#rpa)"/>` + lbl(xm, Math.min(y1, y2) - 6, lab); }
@@ -145,11 +147,14 @@ function rpOpenFrame(c, prev, next) {
       const a = x + pos[i][0] + mw / 2, b = x + pos[j][0] + mw / 2, yb = y + pos[i][1] + mh, dy = 22 + 8 * (k % 3); s += `<path d="M${a} ${yb} C${a} ${yb + dy} ${b} ${yb + dy} ${b} ${yb + 2}" fill="none" stroke="#8793a6" stroke-width="1.2" stroke-dasharray="4 4" marker-end="url(#rpa)"/><text x="${(a + b) / 2}" y="${yb + dy - 4}" font-size="8.5" fill="#5e6a7d" text-anchor="middle">${esc(rpLkTxt([l]))} · not driving</text>`; }));
     if (more) s += `<text x="${x + 14}" y="${y + FH - 8}" font-size="9" fill="#5e6a7d">+ ${more} other link${more === 1 ? '' : 's'} between these activities not drawn</text>`;
     /* in from the previous card, out to the next one */
-    const f0 = rows[0].t, lin = prev ? f0.pre.filter(l => prev.rows.some(q => q.t === l.from)) : [], ym = y + h / 2, fy = y + pos[0][1] + mh / 2;
-    s += `<path d="M${x} ${ym} H${x + L0 / 2} V${fy} H${x + L0 - 1}" fill="none" stroke="#c0392b" stroke-width="1.8" marker-end="url(#rpa)"/>`;
+    const f0 = rows[0].t, lin = prev ? f0.pre.filter(l => prev.rows.some(q => q.t === l.from)) : [], ym = y + h / 2, fy = y + pos[0][1] + mh / 2, inT = lin.map(l => String(l.type || '').replace('PR_', '')), inFin = inT.length && !inT.includes('FS') && !inT.includes('SS');
+    if (inFin) { const tx = x + pos[0][0] + mw, ty0 = y + pos[0][1] - 10; s += `<path d="M${x} ${ym} H${x + L0 / 2} V${ty0} H${tx + 16} V${fy} H${tx + 1}" fill="none" stroke="#c0392b" stroke-width="1.8" marker-end="url(#rpa)"/>`; }
+    else s += `<path d="M${x} ${ym} H${x + L0 / 2} V${fy} H${x + L0 - 1}" fill="none" stroke="#c0392b" stroke-width="1.8" marker-end="url(#rpa)"/>`;
     if (lin.length) s += `<text x="${x + 4}" y="${Math.min(ym, fy) - 6}" font-size="9" font-weight="700" fill="#c0392b">${esc(rpLkTxt(lin))}<title>from ${esc(lin[0].from.code + ' — ' + lin[0].from.name)}</title></text>`;
     const lst = rows[n - 1].t, [lx, ly] = pos[n - 1], lout = next ? next.rows[0].t.pre.filter(l => l.from === lst) : [], ox = x + lx + mw, oy = y + ly + mh * 0.45;
-    if (next) { s += `<path d="M${ox} ${oy} H${x + FW - R0 / 2} V${ym} H${x + FW}" fill="none" stroke="#1d2433" stroke-width="1.8"/>`; if (lout.length) s += `<text x="${ox + 6}" y="${oy - 6}" font-size="9" font-weight="700" fill="#1d2433">${esc(rpLkTxt(lout))}</text>`; }
+    const oT = lout.map(l => String(l.type || '').replace('PR_', '')), oSt = oT.length && !oT.includes('FS') && !oT.includes('FF');
+    if (next && oSt) { const sx = x + lx, ly0 = y + ly + mh + 10; s += `<path d="M${sx} ${oy} H${sx - 16} V${ly0} H${x + FW - R0 / 2} V${ym} H${x + FW}" fill="none" stroke="#1d2433" stroke-width="1.8"/>`; if (lout.length) s += `<text x="${sx + 4}" y="${ly0 + 12}" font-size="9" font-weight="700" fill="#1d2433">${esc(rpLkTxt(lout))} (from its start)</text>`; }
+    else if (next) { s += `<path d="M${ox} ${oy} H${x + FW - R0 / 2} V${ym} H${x + FW}" fill="none" stroke="#1d2433" stroke-width="1.8"/>`; if (lout.length) s += `<text x="${ox + 6}" y="${oy - 6}" font-size="9" font-weight="700" fill="#1d2433">${esc(rpLkTxt(lout))}</text>`; }
     return s + '</g>'; };
   return { w: FW, h: FH, draw };
 }
@@ -239,8 +244,13 @@ function rpGanttSvg(D) {
     if (x.cur) { const f = c.isOrigin ? '#c0392b' : c.phase === 'done' ? '#9aa6b8' : c.phase === 'now' ? '#e08a1e' : '#cfd6e2'; s += `<rect x="${X(x.cur[0])}" y="${y + 13}" width="${Math.max(3, X(x.cur[1]) - X(x.cur[0]))}" height="${x.moved ? 9 : 15}" rx="3" fill="${x.moved ? 'none' : f}" stroke="${x.moved ? '#8793a6' : '#5e6a7d'}" ${x.moved ? 'stroke-dasharray="4 3"' : ''}/>`; }
     if (x.moved) s += `<rect x="${X(x.lv[0])}" y="${y + 22}" width="${Math.max(3, X(x.lv[1]) - X(x.lv[0]))}" height="10" rx="3" fill="#2e8b57"/>`;
     s += '</g>';
-    if (i < st.length - 1 && x.cur && st[i + 1].cur) { const a = x.moved ? x.lv[1] : x.cur[1], b = st[i + 1].moved ? st[i + 1].lv[0] : st[i + 1].cur[0], y1 = y + (x.moved ? 27 : 20), y2 = top + (i + 1) * rh + (st[i + 1].moved ? 27 : 20), ch = x.moved || st[i + 1].moved;
-      s += `<path d="M${X(a)} ${y1} H${X(a) + 7} V${y2} H${Math.max(X(b), X(a) + 8)}" fill="none" stroke="${ch ? '#2e8b57' : '#8793a6'}" stroke-width="1.2" ${ch ? 'stroke-dasharray="4 3"' : ''} marker-end="url(#${ch ? 'rpt' : 'rpa'})"/>`; } });
+    if (i < st.length - 1 && x.cur && st[i + 1].cur) { const nx = st[i + 1], A = x.moved ? x.lv : x.cur, B = nx.moved ? nx.lv : nx.cur, y1 = y + (x.moved ? 27 : 20), y2 = top + (i + 1) * rh + (nx.moved ? 27 : 20), ch = x.moved || nx.moved;
+      /* v9.28: draw the link between the ends it really ties — FS finish→start, SS start→start, FF finish→finish, SF start→finish */
+      const lr = x.c.rows[x.c.rows.length - 1], fr = nx.c.rows[0], tys = lr && fr && fr.t ? fr.t.pre.filter(l => l.from === lr.t).map(l => String(l.type || '').replace('PR_', '')) : [], ty = tys.includes('FS') ? 'FS' : tys[0] || 'FS';
+      const fromStart = ty === 'SS' || ty === 'SF', toFinish = ty === 'FF' || ty === 'SF', a = fromStart ? A[0] : A[1], b = toFinish ? B[1] : B[0], xa = X(a), xb = X(b), d = toFinish ? 1 : -1;
+      const path = `M${xa} ${y1} H${(fromStart ? Math.min(xa, xb) : Math.max(xa, xb)) + (fromStart ? -8 : 8)} V${y2} H${xb + d * 1}`;
+      s += `<path d="${toFinish || fromStart ? `M${xa} ${y1} H${(toFinish && !fromStart ? Math.max(xa, xb) + 8 : fromStart && !toFinish ? Math.min(xa, xb) - 8 : xa - 8)} V${y2} H${xb + (toFinish ? 1 : -1)}` : `M${xa} ${y1} H${xa + 7} V${y2} H${Math.max(xb, xa + 8)}`}" fill="none" stroke="${ch ? '#2e8b57' : '#8793a6'}" stroke-width="1.2" ${ch ? 'stroke-dasharray="4 3"' : ''} marker-end="url(#${ch ? 'rpt' : 'rpa'})"/>`;
+      if (tys.length && ty !== 'FS') s += `<text x="${(toFinish && !fromStart ? Math.max(xa, xb) + 11 : Math.min(xa, xb) - 11)}" y="${(y1 + y2) / 2 + 3}" font-size="8.5" font-weight="700" fill="#5e6a7d" text-anchor="${toFinish && !fromStart ? 'start' : 'end'}">${esc(tys.join('·'))}</text>`; } });
   const y = top + st.length * rh; s += `<text x="${L - 8}" y="${y + 20}" font-size="11" font-weight="700" text-anchor="end">${esc(dtr(N.tg.name, 30))}</text>`;
   const dia = (d, col, fill) => `<path d="M${X(d)} ${y + 8} l8 9 l-8 9 l-8 -9z" fill="${fill}" stroke="${col}" stroke-width="2"/>`;
   if (N.tg.fA != null) s += dia(N.tg.fA, '#1B2A41', '#fff') + `<text x="${X(N.tg.fA)}" y="${y + 42}" font-size="10" text-anchor="end" fill="#1B2A41">baseline ${esc(RPD(N.tg.fA))}</text>`;

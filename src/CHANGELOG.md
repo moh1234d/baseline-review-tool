@@ -1,5 +1,5 @@
 ## v9.28 (2026-11-22)
-- Opened box: activities linked only by SS and/or FF are drawn in parallel (below each other in the same column) with the link where it acts — SS as a bracket between the starts (left edges), FF between the finishes (right edges). FS (and SF) keep the sequence to the next column.
+- Opened box: activities linked only by SS and/or FF are drawn in parallel (below each other in the same column) with the link where it acts — SS as a bracket between the starts (left edges), FF between the finishes (right edges). FS keeps the sequence to the next column; SF runs from the predecessor's start to the successor's finish. The link into an opened box arrives at the start for FS/SS and at the finish for FF/SF; the link out leaves from the finish for FS/FF and from the start for SS/SF. Logic Gantt: the arrow between stages follows the real link type (FS finish→start, SS start→start, FF finish→finish, SF start→finish) and is labelled when it is not FS.
 
 ## v9.27 (2026-11-22)
 - Activities: the “Own” delay figure is removed (it needed too much explanation). Activities in an opened box show their status, planned (baseline) start and finish against forecast start and finish (red later, green earlier, A = actual), original duration and total float; the P6 view drops the “Delay added” column and gains BL Start next to BL Finish.
