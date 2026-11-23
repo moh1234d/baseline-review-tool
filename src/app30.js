@@ -93,3 +93,28 @@ const rpDnHide = () => { const tp = document.getElementById('rpdn-tip'); if (tp)
 document.addEventListener('mouseover', e => { const el = e.target.closest && e.target.closest('[data-rpdn]'); if (el) rpDnShow(el); else if (!(e.target.closest && e.target.closest('#rpdn-tip'))) rpDnHide(); });
 document.addEventListener('click', e => { const p = e.target.closest && e.target.closest('[data-rpdnpin]'); if (!p) return; const el = p.closest('[data-rpdn]'); if (!el) return; e.stopPropagation(); e.preventDefault(); const tp = document.getElementById('rpdn-tip'); if (tp && !tp.hidden) rpDnHide(); else rpDnShow(el); }, true);
 window.addEventListener('scroll', rpDnHide, true); document.addEventListener('keydown', e => { if (e.key === 'Escape') rpDnHide(); });
+
+/* ---------- v9.29: paths prioritised by when their own work starts (forecast, from the data date) ----------
+   NOW = in progress or starting within rpNowDays; THIS MONTH = within rpSoonDays; LATER = after that. Path 1 (longest) is always kept.
+   Within a tier the paths keep their float order. LATER paths are hidden unless the "Show later paths" switch is on. */
+const rpPrioOn = () => S.cfg.rpPrio !== false && S.cfg.rpPrio !== 'off';
+const rpNowD = () => rpClamp(S.cfg.rpNowDays, 1, 60, 7), rpSoonD = () => Math.max(rpNowD(), rpClamp(S.cfg.rpSoonDays, 2, 180, 30));
+const rpShowLater = () => !!S.cfg.rpShowLater;
+const rpPrioKey = () => [rpPrioOn(), rpNowD(), rpSoonD(), rpShowLater()].join('|');
+const RP_TIER = { 1: ['NOW', 'now'], 2: ['THIS MONTH', 'soon'], 3: ['LATER', 'later'] };
+function rpTierOf(M, p) { const dd = M.dataDate, ch = (p.chain || []).filter(t => t && t.status !== 'TK_Complete' && t.type !== 'TT_LOE' && t.type !== 'TT_WBS');
+  const act = ch.find(t => t.status === 'TK_Active'), f = act || ch.slice().sort((a, b) => (a.es || 0) - (b.es || 0))[0];
+  if (!f) return { tier: 3, start: null, act: false, code: '' };
+  const st = act ? (act.as != null ? act.as : act.es) : f.es, days = st == null || dd == null ? 1e9 : st - dd;
+  return { tier: act || days <= rpNowD() ? 1 : days <= rpSoonD() ? 2 : 3, start: st, act: !!act, days: Math.round(days), code: f.code, name: f.name }; }
+function rpPrioritise(M, all, n, R) { all.forEach(p => { p.tierInfo = rpTierOf(M, p); });
+  R.pathsHidden = []; if (!rpPrioOn()) { all.forEach(p => { p.tierInfo = null; }); return all.slice(0, n); }
+  const p1 = all.filter(p => p.rank === 1), rest = all.filter(p => p.rank !== 1).sort((a, b) => (a.tierInfo.tier === 3 ? 3 : 1) - (b.tierInfo.tier === 3 ? 3 : 1) || a.tierInfo.tier - b.tierInfo.tier || a.rank - b.rank);
+  const near = rest.filter(p => p.tierInfo.tier < 3), later = rest.filter(p => p.tierInfo.tier === 3);
+  const sel = p1.concat(near.slice(0, Math.max(0, n - p1.length))); const maxRk = Math.max(...sel.map(p => p.rank));
+  const lat = rpShowLater() ? later.filter(p => p.rank < maxRk || sel.length < n).slice(0, n) : [];
+  R.pathsHidden = rest.filter(p => !sel.includes(p) && !lat.includes(p)).map(p => ({ rank: p.rank, tier: p.tierInfo.tier, start: p.tierInfo.start }));
+  return sel.concat(lat); }
+const rpTierTag = p => { const ti = p && p.tierInfo; if (!ti) return ''; const [lb, cl] = RP_TIER[ti.tier]; return `<span class="rp-tier ${cl}" title="${esc(rpTierWhen(p))}">${lb}</span>`; };
+const rpTierWhen = p => { const ti = p && p.tierInfo; if (!ti || ti.start == null) return ''; return ti.act ? 'in progress since ' + RPD(ti.start) : 'starts ' + RPD(ti.start) + (ti.days >= 0 ? ' (in ' + ti.days + ' day' + (ti.days === 1 ? '' : 's') + ')' : ' (late to start)'); };
+document.addEventListener('change', e => { if (e.target.id !== 'rp-showlater') return; S.cfg.rpShowLater = e.target.checked; try { autosave(); } catch (x) { } const R = S.rp; if (R) { R.pathsN = null; R.pathIdx = 0; } runTrain('rp'); viewRecovery(); });

@@ -1,3 +1,6 @@
+## v9.29 (2026-11-23)
+- Recovery planner: paths are prioritised by when their own work starts (forecast start, from the data date): NOW (in progress or starting within 7 days), THIS MONTH (within 30 days), LATER. Path 1 (longest) is always kept; the other paths are taken NOW first, then THIS MONTH, each in float order. A “Show later paths” switch lists LATER paths too (off by default). Labels in the path selector (grouped), the path note, Parallel plots titles and the P6 view. Both windows are settings.
+
 ## v9.28 (2026-11-22)
 - Opened box: activities linked only by SS and/or FF are drawn in parallel (below each other in the same column) with the link where it acts — SS as a bracket between the starts (left edges), FF between the finishes (right edges). FS keeps the sequence to the next column; SF runs from the predecessor's start to the successor's finish. The link into an opened box arrives at the start for FS/SS and at the finish for FF/SF; the link out leaves from the finish for FS/FF and from the start for SS/SF. Logic Gantt: the arrow between stages follows the real link type (FS finish→start, SS start→start, FF finish→finish, SF start→finish) and is labelled when it is not FS.
 
