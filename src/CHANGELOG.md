@@ -1,3 +1,6 @@
+## v9.34 (2026-11-23)
+- Recovery planner: each activity shows where it is — building › floor › room › area (e.g. 📍 L07 › Twin Room › Dry Area) on its own line under the name in an opened box. Read from the WBS path first; activity codes (Floor, Level, Room, Area, Building, Zone …) only fill what the WBS does not give or add detail that fits it (WBS “Basement” + code B01 → B01); when they disagree, the WBS wins. Stage cards show the common location or the spread (L09–L11 · 3 floors); the P6 view gains a Location column; the “Delaying now” hover note gains a Location row. Setting to switch it off.
+
 ## v9.33 (2026-11-23)
 - Recovery planner: a “Float in  Calendar days | Working days” switch under the path selector converts every float figure on the page at once (boxes, opened activities, hover note, path selector and notes, P6 view). Same setting as in Setup; the choice is remembered.
 
