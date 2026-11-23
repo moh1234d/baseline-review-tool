@@ -118,3 +118,33 @@ function rpPrioritise(M, all, n, R) { all.forEach(p => { p.tierInfo = rpTierOf(M
 const rpTierTag = p => { const ti = p && p.tierInfo; if (!ti) return ''; const [lb, cl] = RP_TIER[ti.tier]; return `<span class="rp-tier ${cl}" title="${esc(rpTierWhen(p))}">${lb}</span>`; };
 const rpTierWhen = p => { const ti = p && p.tierInfo; if (!ti || ti.start == null) return ''; return ti.act ? 'in progress since ' + RPD(ti.start) : 'starts ' + RPD(ti.start) + (ti.days >= 0 ? ' (in ' + ti.days + ' day' + (ti.days === 1 ? '' : 's') + ')' : ' (late to start)'); };
 document.addEventListener('change', e => { if (e.target.id !== 'rp-showlater') return; S.cfg.rpShowLater = e.target.checked; try { autosave(); } catch (x) { } const R = S.rp; if (R) { R.pathsN = null; R.pathIdx = 0; } runTrain('rp'); viewRecovery(); });
+
+/* ---------- v9.30: pan (drag to move) and wheel zoom inside the charts; an opened box is brought into view ---------- */
+const rpPanBox = el => el && el.closest && el.closest('.rpv-scroll');
+let rpPan = null, rpPanEat = false;
+document.addEventListener('pointerdown', e => { if (e.button !== 0 || e.pointerType === 'touch') return; const sc = rpPanBox(e.target); if (!sc || e.target.closest('input,select,textarea,button,a,.rpn-b,[data-rpnote],[data-rpdnpin],[data-rplh]')) return;
+  rpPan = { sc, x: e.clientX, y: e.clientY, sl: sc.scrollLeft, st: sc.scrollTop, wy: window.scrollY, moved: false, id: e.pointerId }; });
+document.addEventListener('pointermove', e => { if (!rpPan) return; const dx = e.clientX - rpPan.x, dy = e.clientY - rpPan.y;
+  if (!rpPan.moved && Math.abs(dx) + Math.abs(dy) < 5) return; if (!rpPan.moved) { rpPan.moved = true; rpPan.sc.classList.add('panning'); try { rpPan.sc.setPointerCapture(rpPan.id); } catch (x) { } }
+  rpPan.sc.scrollLeft = rpPan.sl - dx; const canY = rpPan.sc.scrollHeight > rpPan.sc.clientHeight + 2;
+  if (canY) rpPan.sc.scrollTop = rpPan.st - dy; else window.scrollTo(window.scrollX, rpPan.wy - dy); e.preventDefault(); });
+const rpPanEnd = () => { if (!rpPan) return; if (rpPan.moved) { rpPan.sc.classList.remove('panning'); rpPanEat = true; setTimeout(() => { rpPanEat = false; }, 0); } rpPan = null; };
+document.addEventListener('pointerup', rpPanEnd); document.addEventListener('pointercancel', rpPanEnd);
+document.addEventListener('click', e => { if (rpPanEat) { e.stopPropagation(); e.preventDefault(); rpPanEat = false; } }, true);
+/* wheel zoom around the mouse: Ctrl + wheel (or pinch on a trackpad); plain wheel too when the setting says so */
+let rpZsave = null;
+document.addEventListener('wheel', e => { const sc = rpPanBox(e.target); if (!sc) return; const plain = /^(y|yes|on|true|1)$/i.test(String(S.cfg.rpWheelZoom || '')); if (!e.ctrlKey && !plain) return; e.preventDefault();
+  const z0 = rpZoom(), z1 = Math.round(Math.max(40, Math.min(300, z0 * Math.exp(-e.deltaY * 0.0022)))); if (z1 === z0) return;
+  const r = sc.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, k = z1 / z0, sl = sc.scrollLeft, st = sc.scrollTop;
+  S.cfg.rpZoom = z1; const w = document.querySelector('.rp-wrap'); if (w) w.style.setProperty('--rpz', z1);
+  const sl2 = document.getElementById('rp-lz'); if (sl2) { sl2.value = z1; const b = sl2.nextElementSibling; if (b) b.textContent = z1 + '%'; }
+  sc.scrollLeft = (sl + mx) * k - mx; if (sc.scrollHeight > sc.clientHeight + 2) sc.scrollTop = (st + my) * k - my;
+  clearTimeout(rpZsave); rpZsave = setTimeout(() => { try { autosave(); } catch (x) { } }, 400); }, { passive: false });
+/* bring an opened box (or the box just collapsed) into view, inside the chart, without jumping the page */
+function rpFocus(sel) { const el = document.querySelector(sel); if (!el) return; const sc = rpPanBox(el) || document.querySelector('.rpv-scroll'); if (!sc) return;
+  const r = el.getBoundingClientRect(), c = sc.getBoundingClientRect(), pad = 16;
+  if (r.width + pad * 2 <= c.width) sc.scrollLeft += (r.left + r.width / 2) - (c.left + c.width / 2); else sc.scrollLeft += r.left - c.left - pad;
+  if (sc.scrollHeight > sc.clientHeight + 2) { if (r.height + pad * 2 <= c.height) sc.scrollTop += (r.top + r.height / 2) - (c.top + c.height / 2); else sc.scrollTop += r.top - c.top - pad; }
+  const r2 = el.getBoundingClientRect(), vh = window.innerHeight, top = Math.max(8, (document.querySelector('.rp-full') ? 0 : 70));
+  if (r2.height + 24 <= vh - top) { if (r2.top < top || r2.bottom > vh - 8) window.scrollBy({ top: (r2.top + r2.height / 2) - (top + (vh - top) / 2), behavior: 'smooth' }); }
+  else if (r2.top < top || r2.top > vh * 0.4) window.scrollBy({ top: r2.top - top - 8, behavior: 'smooth' }); }

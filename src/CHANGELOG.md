@@ -1,3 +1,7 @@
+## v9.30 (2026-11-23)
+- Recovery planner charts (Parallel plots, Network, Logic Gantt, P6 view): drag with the mouse to pan in any direction; a click without dragging still opens boxes. Ctrl + mouse wheel (or trackpad pinch) zooms in and out around the mouse; a setting lets the plain wheel zoom too. Zoom now 40% to 300%.
+- Opening a box brings the whole box into view (or its top-left corner when it is larger than the view); Collapse returns the view to the box.
+
 ## v9.29 (2026-11-23)
 - Recovery planner: paths are prioritised by when their own work starts (forecast start, from the data date): NOW (in progress or starting within 7 days), THIS MONTH (within 30 days), LATER. Path 1 (longest) is always kept; the other paths are taken NOW first, then THIS MONTH, each in float order. A “Show later paths” switch lists LATER paths too (off by default). Labels in the path selector (grouped), the path note, Parallel plots titles and the P6 view. Both windows are settings.
 
