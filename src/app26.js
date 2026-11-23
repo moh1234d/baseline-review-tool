@@ -97,7 +97,8 @@ function rpInterfere(R) {
 /* data date line: one look in every view - violet (used nowhere else), solid, white halo so it shows over boxes and bars */
 const RP_DD = '#6d28d9';
 const rpDDTag = (x, y, dd, W) => { const t = 'DATA DATE ' + dd, lw = rpTw(t, 9.5, true) + 18, lx = Math.max(2, Math.min(W - lw - 2, x - lw / 2)); return `<rect x="${lx}" y="${y}" width="${lw}" height="18" rx="9" fill="${RP_DD}" stroke="#fff" stroke-width="1.5"/><text x="${lx + 9}" y="${y + 12.5}" font-size="9.5" font-weight="800" fill="#fff">${esc(t)}</text>`; };
-const rpDDLine = pts => { const p = pts.map(q => q.join(',')).join(' '); return `<polyline points="${p}" fill="none" stroke="#fff" stroke-width="7" stroke-linejoin="round" opacity=".9"/><polyline points="${p}" fill="none" stroke="${RP_DD}" stroke-width="3" stroke-linejoin="round"/>`; };
+/* v9.35: thin dashed line, no white edge, so the text under it stays readable between the dashes */
+const rpDDLine = pts => { const p = pts.map(q => q.join(',')).join(' '); return `<polyline points="${p}" fill="none" stroke="${RP_DD}" stroke-width="1.5" stroke-dasharray="6 4" stroke-linejoin="round"/>`; };
 const rpDDMode = () => { const v = String(S.cfg.rpDDMode || 'align').trim().toLowerCase(); return ['align', 'mark', 'step', 'none'].includes(v) ? v : 'align'; };
 const rpDDOf = () => { const M = S.rp && S.rp.B && S.rp.B.M; return M && M.dataDate != null ? M.dataDate : null; };
 /* ---------- an opened card: its activities as small boxes, with the links between them and in / out ---------- */
