@@ -1,3 +1,6 @@
+## v9.32 (2026-11-23)
+- Recovery planner: total float and “can slip” float are shown in calendar days (cd) instead of each activity's working days, so paths on different calendars (e.g. 6-day approvals vs 7-day testing) compare directly. Boxes, opened activities, hover note, path selector, P6 view (Total Float (cd)). Setting to switch back to working days.
+
 ## v9.31 (2026-11-23)
 - Fix: the “Show later paths” switch overlapped its text and the “Not shown” note on some browsers. It is now its own switch on a separate line under the path selector, with the “Not shown” list beside it.
 
