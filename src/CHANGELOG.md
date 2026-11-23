@@ -1,3 +1,6 @@
+## v9.31 (2026-11-23)
+- Fix: the “Show later paths” switch overlapped its text and the “Not shown” note on some browsers. It is now its own switch on a separate line under the path selector, with the “Not shown” list beside it.
+
 ## v9.30 (2026-11-23)
 - Recovery planner charts (Parallel plots, Network, Logic Gantt, P6 view): drag with the mouse to pan in any direction; a click without dragging still opens boxes. Ctrl + mouse wheel (or trackpad pinch) zooms in and out around the mouse; a setting lets the plain wheel zoom too. Zoom now 40% to 300%.
 - Opening a box brings the whole box into view (or its top-left corner when it is larger than the view); Collapse returns the view to the box.

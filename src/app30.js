@@ -117,7 +117,7 @@ function rpPrioritise(M, all, n, R) { all.forEach(p => { p.tierInfo = rpTierOf(M
   return sel.concat(lat); }
 const rpTierTag = p => { const ti = p && p.tierInfo; if (!ti) return ''; const [lb, cl] = RP_TIER[ti.tier]; return `<span class="rp-tier ${cl}" title="${esc(rpTierWhen(p))}">${lb}</span>`; };
 const rpTierWhen = p => { const ti = p && p.tierInfo; if (!ti || ti.start == null) return ''; return ti.act ? 'in progress since ' + RPD(ti.start) : 'starts ' + RPD(ti.start) + (ti.days >= 0 ? ' (in ' + ti.days + ' day' + (ti.days === 1 ? '' : 's') + ')' : ' (late to start)'); };
-document.addEventListener('change', e => { if (e.target.id !== 'rp-showlater') return; S.cfg.rpShowLater = e.target.checked; try { autosave(); } catch (x) { } const R = S.rp; if (R) { R.pathsN = null; R.pathIdx = 0; } runTrain('rp'); viewRecovery(); });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-rpshowlater]'); if (!b) return; S.cfg.rpShowLater = !rpShowLater(); try { autosave(); } catch (x) { } const R = S.rp; if (R) { R.pathsN = null; R.pathIdx = 0; } runTrain('rp'); viewRecovery(); });
 
 /* ---------- v9.30: pan (drag to move) and wheel zoom inside the charts; an opened box is brought into view ---------- */
 const rpPanBox = el => el && el.closest && el.closest('.rpv-scroll');
