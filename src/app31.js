@@ -43,7 +43,7 @@ const locNear = (a, b) => { a = String(a).toLowerCase(); b = String(b).toLowerCa
 const locFloorCode = c => { const v = locFloor(c.short) || locFloor(c.name); return v; };
 function rpLoc(t) {
   if (!t) return null; if (t._loc !== undefined) return t._loc;
-  const R = S.rp, M = R && R.B && R.B.M; const W = M && M.wbs; const w = W && W[t.wbs];
+  const R = S.rp, M = [R && R.B && R.B.M, R && R.A && R.A.M].find(m => m && m.byId && m.byId[t.id] === t) || (R && R.B && R.B.M); const W = M && M.wbs; const w = W && W[t.wbs];
   const o = locFromWbs(w && w.path ? w.path.slice(1) : String(t.wbsPath || '').split(' / '));
   for (const [ty, c] of Object.entries(t.codes || {})) { const k = locCodeKind(ty); if (!k || !c) continue;
     if (k === 'f') { const v = locFloorCode(c); if (!v) continue; if (!o.f) o.f = v; else if (o.f === 'Basement' && /^B0\d$/.test(v)) o.f = v; }

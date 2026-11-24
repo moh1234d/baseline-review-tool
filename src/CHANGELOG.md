@@ -1,6 +1,7 @@
 ## v9.36 (2026-11-24)
 - Fix (Recovery planner): after replacing the baseline or update file, the paths other than the selected one (and the Parallel plots, Network, P6 view and hover notes built from them) kept the figures from the previous file, because the path cache did not notice the new file. The cache is now cleared on every file load and rebuilt whenever either file changes.
 - “Delaying now” hover note: when the activity is not found in the loaded baseline file, the badge says “not in baseline file” (grey) and the baseline finish says the same, instead of “on time” and “–”.
+- Safeguards so it cannot come back: the location lookup reads the WBS from the file the activity belongs to; a lever test still running when a file is replaced is discarded; a new automatic test (tests/recovery-files.test.js) loads an old baseline, swaps the baseline and the update and checks every path, box, view and hover note against the files loaded now; a publish guard runs all tests before anything goes live.
 
 ## v9.35 (2026-11-23)
 - Recovery planner: the data date line (Parallel plots and Logic Gantt) is now a thin dashed violet line without the white edge, so the figures and labels under it stay readable between the dashes; the DATA DATE tag is unchanged.

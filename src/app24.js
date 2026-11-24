@@ -13,7 +13,9 @@ function runTrain(k) {
     tcode = (R.paths[R.pathIdx || 0] || {}).code; }
   try { const pp = k === 'rp' ? (S.rp.paths || [])[S.rp.pathIdx || 0] : null; D.train = E.delayTrain(ab[0], Bm, { targetCode: tcode, cfg: trCfg(), chain: pp && pp.rank > 1 ? pp.chain : null, joins: pp && pp.rank > 1 ? pp.joins : null }); } catch (e) { console.error(e); D.trainErr = e.message; return; }
   D.trainSel = D.train && D.train.origin ? D.train.cars.findIndex(c => c.isOrigin) : 0; D.levBusy = true;
+  const tok = D.train, own = trSt(k);
   setTimeout(() => {
+    if (trSt(k) !== own || own.train !== tok) return; /* v9.36: files or path changed meanwhile: a newer run owns the result */
     try { const hw = Object.assign({}, E.DELAY_DEFAULTS, S.cfg.delay || {}).holdWords; D.lev = E.trainLevers(Bm, D.train, { holdWords: hw, seqCfg: S.cfg });
       /* start with the best contractor lever of each car switched on (authority steps need the employer, so they start off) */
       const best = new Map(); D.lev.levers.forEach((l, i) => { if (l.gain > 0 && l.kind !== 'parallel' && (!best.has(l.car) || l.gain > D.lev.levers[best.get(l.car)].gain)) best.set(l.car, i); });

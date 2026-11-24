@@ -20,3 +20,8 @@ Source is in `src/` (engine*.js = calculations, app*.js = screens). Version is i
 
 ## Password
 The hosted site is protected by a Worker (`worker/index.js`) that checks HTTP Basic auth. The password is the Worker secret `BRT_PASSWORD` (Cloudflare dashboard > Workers > baseline-review-tool > Settings > Variables and Secrets). Never commit it. `npm test` covers the check.
+
+
+## Before publishing
+
+Publishing = pushing to `main` (Cloudflare builds and deploys it). Run `sh tools/install-hooks.sh` once per clone: from then on every push to `main` runs `npm test` first and is stopped if anything fails. `npm test` covers the scheduling engine, the worker, and (with Playwright) the Recovery planner file-swap check in `tests/recovery-files.test.js`: it loads an old baseline, replaces the baseline and then the update, and fails if any path, box, view or hover note still shows figures from a replaced file, or shows “on time” for an activity with no baseline.

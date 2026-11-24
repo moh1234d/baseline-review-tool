@@ -1,0 +1,13 @@
+#!/bin/sh
+# Publishing = pushing to main (Cloudflare builds and deploys main). Run every test first; any failure stops the publish.
+# Install once per clone:  sh tools/install-hooks.sh
+while read local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main)
+      echo "pre-push: publishing to main - running all tests (engine, worker, Recovery planner file swaps)..."
+      if ! npm test --silent; then echo "pre-push: TESTS FAILED - not published."; exit 1; fi
+      grep -q "$(cat src/VERSION | tr -d '\n')" src/CHANGELOG.md || { echo "pre-push: src/VERSION has no CHANGELOG entry - not published."; exit 1; }
+      echo "pre-push: all tests passed." ;;
+  esac
+done
+exit 0
