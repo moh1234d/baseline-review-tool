@@ -54,4 +54,16 @@ const assert=require('assert');let n=0;const eq=(name,got,want)=>{assert.strictE
  eq('masonry -> conduits is not',hit('MASONRY WORKS Internal','CONDUITS LIGHTING'),false);
  eq('names compared without floor and zone',E.trainNorm('5 Floor/ Zone B / PLASTER WORKS - WET Area'),E.trainNorm('3 Floor/ Zone A / PLASTER WORKS - WET Area'));
 }
+{ // v9.37 same project?
+ const w=(id,short,name,parent)=>({id,short,name,parent});
+ const mkM=(wbs,tasks)=>({wbs:Object.fromEntries(wbs.map(x=>[x.id,x])),tasks:tasks.map(([code,wb])=>({code,wbs:wb,type:'TT_Task'})),proj:{proj_short_name:'P'}});
+ const A=mkM([w('r','P','Proj 15 Oct',null),w('1','L1','Level 1','r'),w('2','L2','Level 2','r')],[['A1','1'],['A2','1'],['A3','2']]);
+ const B=mkM([w('r','P','Proj 19 Nov',null),w('1','L1','Level 1','r'),w('2','L2','Level 2','r')],[['A1','1'],['A2','1'],['A3','2']]);
+ eq('same project: verdict ok (top node name differs)',E.fileMatch(A,B).verdict,'ok');
+ const C=mkM([w('r','X','Other',null),w('9','Z9','Villas','r')],[['B1','9'],['B2','9']]);
+ eq('different project: no IDs in common',E.fileMatch(A,C).verdict,'diff');
+ const D=mkM([w('r','X','Other',null),w('9','Z9','Villas','r')],Array.from({length:30},(_,i)=>['A'+(i+1),'9']));
+ const A30=mkM([w('r','P','P',null),w('1','L1','Level 1','r')],Array.from({length:30},(_,i)=>['A'+(i+1),'1']));
+ eq('different project: same IDs, different WBS',E.fileMatch(A30,D).verdict,'diff');
+}
 console.log(n+' checks passed');

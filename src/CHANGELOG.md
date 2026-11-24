@@ -1,3 +1,7 @@
+## v9.37 (2026-11-24)
+- Recovery planner: the two files must be the same project before anything is compared. Three tests on the update's activities: activity IDs found in the baseline, WBS elements found in the baseline (by WBS code path or name path, leaving out the project's top node), and of the IDs found, the share in the same WBS element in both files. Below 30% on any test (Setup) the files are treated as two different projects: a red banner with the three figures and nothing is compared (no baseline finish, delay, paths, levers or notes); “Compare anyway” is offered for files renumbered on purpose. Below 80% (Setup) a yellow “check the files” note. When all pass, a small green “Same project” line with the figures.
+- The P6 check report now says it checks the current update on its own (the baseline is not used).
+
 ## v9.36 (2026-11-24)
 - Fix (Recovery planner): after replacing the baseline or update file, the paths other than the selected one (and the Parallel plots, Network, P6 view and hover notes built from them) kept the figures from the previous file, because the path cache did not notice the new file. The cache is now cleared on every file load and rebuilt whenever either file changes.
 - “Delaying now” hover note: when the activity is not found in the loaded baseline file, the badge says “not in baseline file” (grey) and the baseline finish says the same, instead of “on time” and “–”.

@@ -10,6 +10,7 @@ const file = (name, txt) => ({ name, mimeType: 'application/octet-stream', buffe
 const OLD_BL = file('old-baseline.xer', project({ name: 'BL-OLD', dd: '2026-02-01', omit: ['A4', 'B3', 'C3'] }));
 const BL = file('baseline.xer', project({ name: 'BL', dd: '2026-02-01' }));
 const UPD1 = file('update-1.xer', project({ name: 'UPD1', dd: '2026-03-01', shift: 3, tf: -5 }));
+const OTHER = file('other-project-baseline.xer', project({ name: 'CLUSTER-X', dd: '2026-02-01', prefix: 'N34-', wbsPrefix: 'Villa Type B ' }));
 const UPD2 = file('update-2.xer', project({ name: 'UPD2', dd: '2026-03-08', shift: 5, tf: -9 }));
 (async () => {
   const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 1600, height: 1000 } })).newPage();
@@ -48,6 +49,15 @@ const UPD2 = file('update-2.xer', project({ name: 'UPD2', dd: '2026-03-08', shif
   await load('A', BL); await check('baseline replaced');
   await load('B', UPD2); await check('update replaced');
   await load('A', OLD_BL); await check('baseline replaced back');
+  /* v9.37: a baseline from another project -> red banner, nothing compared, no figures */
+  await p.setInputFiles('#rp-A', { name: OTHER.name, mimeType: OTHER.mimeType, buffer: OTHER.buffer });
+  await p.waitForFunction(() => S.rp.A && S.rp.A.name === 'other-project-baseline.xer' && document.querySelector('.rpm.diff'), null, { timeout: 60000 });
+  const blocked = await p.evaluate(() => ({ banner: !!document.querySelector('.rpm.diff'), kpis: !!document.querySelector('.rp-kpis'), notes: document.querySelectorAll('[data-rpdn]').length, train: !!(S.rp.tr && S.rp.tr.train), ids: S.rp.match.ids }));
+  assert.deepStrictEqual(blocked, { banner: true, kpis: false, notes: 0, train: false, ids: 0 }, 'two different projects must be blocked: ' + JSON.stringify(blocked)); n++;
+  await p.click('[data-rpmatchgo]'); await p.waitForFunction(() => S.rp.tr && S.rp.tr.train && !S.rp.tr.levBusy && S.rp.tr.lev, null, { timeout: 60000 });
+  assert.ok(await p.evaluate(() => !!document.querySelector('.rpm.diff') && !!document.querySelector('.rp-kpis')), '"Compare anyway" shows the results with the red banner kept'); n++;
+  await load('A', BL); assert.ok(await p.evaluate(() => !!document.querySelector('.rpm.ok') && !document.querySelector('.rpm.diff') && S.rp.match.verdict === 'ok'), 'right baseline again -> "Same project"'); n++;
+  await check('right baseline after another project');
   /* a missing baseline is never "on time" */
   const tip = await p.evaluate(() => rpDnTip({ t: null, code: 'X1', name: 'x', st: 'Not started', ef: 20000, bf: null, late: null, held: [], flow: [] }, 2));
   assert.ok(/not in baseline file/.test(tip) && !/on time/.test(tip), 'no baseline -> "not in baseline file"'); n++;

@@ -26,13 +26,13 @@ const day = (s, n) => new Date(Date.parse(s + 'T00:00:00Z') + n * 864e5).toISOSt
 /* three chains into the finish milestone FIN; `omit` leaves activities out (a baseline that lacks them); `shift` moves the update's dates */
 function project(o) {
   o = o || {}; const s0 = '2026-02-01', dd = o.dd || '2026-03-01', sh = o.shift || 0, T = [], Lk = [];
-  const chain = (p, n, len, start, wbs, trades) => { let d = start; for (let i = 1; i <= n; i++) { const code = p + i; if (!(o.omit || []).includes(code)) { const es = day(d, i > 1 ? 1 : 0), ef = day(es, len - 1); T.push({ code, name: trades[i - 1] + ' - ' + wbs, wbs, es, ef, dur: len, tf: o.tf || 0 }); if (i > 1 && !(o.omit || []).includes(p + (i - 1))) Lk.push([p + (i - 1), code]); if (i === n) Lk.push([code, 'FIN']); } d = day(d, len + (i > 1 ? 1 : 0)); } };
+  const px = o.prefix || '', wx = o.wbsPrefix || ''; const chain = (p0, n, len, start, wbs0, trades) => { const p = px + p0, wbs = wx + wbs0; let d = start; for (let i = 1; i <= n; i++) { const code = p + i; if (!(o.omit || []).includes(p0 + i)) { const es = day(d, i > 1 ? 1 : 0), ef = day(es, len - 1); T.push({ code, name: trades[i - 1] + ' - ' + wbs, wbs, es, ef, dur: len, tf: o.tf || 0 }); if (i > 1 && !(o.omit || []).includes(p0 + (i - 1))) Lk.push([p + (i - 1), code]); if (i === n) Lk.push([code, px + 'FIN']); } d = day(d, len + (i > 1 ? 1 : 0)); } };
   chain('A', 6, 14 + sh, s0, 'Level 01 Guest Rooms', ['Blockwork', 'Plastering', 'Gypsum Ceiling', 'Painting', 'Flooring', 'Joinery']);
   chain('B', 5, 15 + sh, s0, 'Level 02 Corridors', ['HVAC Ducting', 'Sprinkler Piping', 'Cable Tray', 'Wiring', 'Lighting Fixtures']);
   chain('C', 5, 13 + sh, s0, 'Basement 1 Plant Room', ['Pump Skids', 'Chillers', 'Switchgear', 'Panel Termination', 'Testing and Commissioning']);
   const last = T.reduce((m, t) => t.ef > m ? t.ef : m, s0);
-  T.push({ code: 'FIN', name: 'Project Completion', wbs: 'Milestones', type: 'TT_FinMile', es: day(last, 1), ef: day(last, 1), dur: 0 });
-  T.forEach(t => { if (t.code === 'FIN') return; if (t.ef < dd) t.status = 'TK_Complete'; else if (t.es < dd) { t.status = 'TK_Active'; t.rem = Math.max(1, Math.round((Date.parse(t.ef) - Date.parse(dd)) / 864e5)); } });
+  T.push({ code: px + 'FIN', name: 'Project Completion', wbs: wx + 'Milestones', type: 'TT_FinMile', es: day(last, 1), ef: day(last, 1), dur: 0 });
+  T.forEach(t => { if (t.code === px + 'FIN') return; if (t.ef < dd) t.status = 'TK_Complete'; else if (t.es < dd) { t.status = 'TK_Active'; t.rem = Math.max(1, Math.round((Date.parse(t.ef) - Date.parse(dd)) / 864e5)); } });
   return mk({ dd, name: o.name, tasks: T, links: Lk });
 }
 module.exports = { mk, project };

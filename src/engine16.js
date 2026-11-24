@@ -281,3 +281,32 @@ E.p6Check = function (M, o) {
   return { verdict, st, finish: r.finish, p6fin, dFin, diffs, rootList, byCause: [...byCause.values()].sort((a, b) => b.acts - a.acts), rootOf, lp: { hasFlag, p6: p6lp.size, tool: tlp.size, both, onlyP6: onlyP6.map(id => byId.get(id)), onlyTool: onlyTool.map(id => byId.get(id)), loe: loeLp }, part, timeRel, beforeDD, stale, unsched, settings,
     notChecked: ['Total float and late dates (the tool does not calculate its own backward pass yet)', 'Resource levelling and resource-dependent calendars', 'Suspend and resume dates', 'Activities already completed (their actual dates are taken as they are)', 'Whether the logic itself is right: this report only checks that the tool calculates the same dates as P6 from the same logic'] };
 };
+
+/* v9.37: are these two files the same project? Three tests, all on the CURRENT update's activities:
+   ids  = share of the update's activity IDs found in the baseline
+   wbs  = share of the update's WBS elements (that hold activities) found in the baseline, by WBS code path or by name path
+          (the project's top node is left out: its name changes with every update)
+   same = of the IDs found, share that sit in the same WBS element in both files (catches two projects that both use A1000 …)
+   verdict: 'diff' if any test is below min %, 'warn' if any is below warn %, else 'ok'. */
+E.fileMatch = function (A, B, o) {
+  o = o || {}; const min = isFinite(+o.min) ? +o.min : 30, warn = isFinite(+o.warn) ? +o.warn : 80;
+  const norm = s => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9؀-ۿ]+/g, ' ').trim();
+  const keys = M => { const K = {}; const get = id => { if (K[id]) return K[id]; const w = M.wbs[id]; if (!w) return (K[id] = { c: '', n: '' });
+      if (!w.parent || !M.wbs[w.parent]) return (K[id] = { c: '', n: '' }); const p = get(w.parent);
+      return (K[id] = { c: (p.c ? p.c + '.' : '') + norm(w.short), n: (p.n ? p.n + '/' : '') + norm(w.name) }); };
+    Object.keys(M.wbs || {}).forEach(get); return K; };
+  const KA = keys(A), KB = keys(B), cA = new Set(), nA = new Set();
+  Object.values(KA).forEach(k => { if (k.c) cA.add(k.c); if (k.n) nA.add(k.n); });
+  const aBy = new Map(); A.tasks.forEach(t => { if (!aBy.has(t.code)) aBy.set(t.code, t); });
+  let n = 0, hit = 0, same = 0; const wb = new Set(), wbHit = new Set(), miss = [];
+  for (const t of B.tasks) { if (t.type === 'TT_WBS') continue; n++;
+    const k = KB[t.wbs]; if (k && (k.c || k.n)) { wb.add(t.wbs); if (cA.has(k.c) || nA.has(k.n)) wbHit.add(t.wbs); }
+    const a = aBy.get(t.code); if (!a) { if (miss.length < 5) miss.push(t.code); continue; } hit++;
+    const ka = KA[a.wbs]; if (k && ka && ((k.c && k.c === ka.c) || (k.n && k.n === ka.n))) same++; }
+  const pc = (a, b) => b ? Math.round(a / b * 1000) / 10 : null;
+  const r = { n, hit, ids: pc(hit, n), wbsN: wb.size, wbsHit: wbHit.size, wbs: pc(wbHit.size, wb.size), same: hit ? pc(same, hit) : null, sameN: same, miss, min, warn,
+    nameA: (A.proj && A.proj.proj_short_name) || '', nameB: (B.proj && B.proj.proj_short_name) || '' };
+  const v = [r.ids, r.wbs, r.same].filter(x => x != null);
+  r.verdict = !n || r.ids < min || (r.wbs != null && r.wbs < min) || (r.same != null && hit >= 20 && r.same < min) ? 'diff' : v.some(x => x < warn) ? 'warn' : 'ok';
+  return r;
+};
