@@ -66,7 +66,7 @@ function rpEnsure() {
   if (!S.rp.A && !S.rp.B) { if (S.cmp && S.cmp.A && S.cmp.B) { S.rp.A = S.cmp.A; S.rp.B = S.cmp.B; S.rp.from = 'Schedule comparison'; } else if (S.dl && S.dl.base && S.dl.ups && S.dl.ups.length) { S.rp.A = S.dl.base; S.rp.B = S.dl.ups[S.dl.ups.length - 1]; S.rp.from = 'Delay analysis'; } }
   if (S.rp.A && S.rp.B && !(S.rp.tr && S.rp.tr.train) && !(S.rp.tr && S.rp.tr.trainErr)) runTrain('rp');
 }
-async function rpLoad(side, file) { try { const x = await xerStage(file); S.rp = S.rp || {}; S.rp[side] = { M: x.M, name: file.name, file }; S.rp.from = ''; S.rp.paths = null; S.rp.pathIdx = 0; if (S.rp.tr) S.rp.tr = {}; toast(file.name + ': ' + x.M.tasks.length.toLocaleString('en-US') + ' activities', 'ok'); } catch (e) { toast(e.message, 'bad'); } if (S.rp.A && S.rp.B) runTrain('rp'); viewRecovery(); }
+async function rpLoad(side, file) { try { const x = await xerStage(file); S.rp = S.rp || {}; S.rp[side] = { M: x.M, name: file.name, file }; S.rp.from = ''; S.rp.paths = null; S.rp.pathIdx = 0; S.rp.pt = null; S.rp.ptKey = null; if (S.rp.tr) S.rp.tr = {}; toast(file.name + ': ' + x.M.tasks.length.toLocaleString('en-US') + ' activities', 'ok'); } catch (e) { toast(e.message, 'bad'); } if (S.rp.A && S.rp.B) runTrain('rp'); viewRecovery(); }
 function viewRecovery() {
   rpEnsure(); const R = S.rp, D = R.tr || {}, T = D.train;
   $('#main').classList.add('wide');

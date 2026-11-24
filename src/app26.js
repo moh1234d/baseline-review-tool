@@ -80,7 +80,7 @@ function rpNetSvg(D) {
 }
 /* ---------- B: the longest paths as lanes; activities they share (the junction) are drawn once, and where they meet again ---------- */
 function rpPathTrains(R) {
-  const key = (R.paths || []).map(p => p.code).join('|') + '|' + JSON.stringify(S.cfg.train || {}) + '|' + (R.pathIdx || 0) + '|' + (R.tr && R.tr.train ? R.tr.train.target.code : ''); if (R.ptKey === key && R.pt) return R.pt;
+  const key = (R.paths || []).map(p => p.code).join('|') + '|' + JSON.stringify(S.cfg.train || {}) + '|' + (R.pathIdx || 0) + '|' + (R.tr && R.tr.train ? R.tr.train.target.code : ''); if (R.ptKey === key && R.pt && R.ptA === (R.A && R.A.M) && R.ptB === (R.B && R.B.M)) return R.pt; R.ptA = R.A && R.A.M; R.ptB = R.B && R.B.M;
   R.pt = (R.paths || []).map((p, i) => { if (i === (R.pathIdx || 0) && R.tr && R.tr.train) return { p, T: R.tr.train, sel: true }; try { return { p, T: E.delayTrain(R.A.M, R.B.M, { targetCode: p.code, cfg: trCfg(), chain: p.rank > 1 ? p.chain : null, joins: p.rank > 1 ? p.joins : null }), sel: false }; } catch (e) { return { p, T: null, err: e.message }; } }); R.ptKey = key; return R.pt;
 }
 /* what the paths share: where each later path joins a higher one, the activities shared before the first car, and the link into the finish */
