@@ -19,7 +19,6 @@ function locFloor(n) {
   if (/\bground\s*floor\b|^gf$|^0gf$|\(gf\)/.test(l)) return 'GF';
   if (/\broof\b/.test(l)) return 'Roof';
   if (/\bmezz/.test(l)) return 'Mezz';
-  if (/\bpodium\b/.test(l) && !LOC_ROOM.test(l.replace('podium', ''))) return null;
   if ((m = l.match(/\((l\d{1,2})\)|\b(?:level|lvl|floor)\s*[-#]?\s*0?(\d{1,2})\b|\bl\s?0?(\d{1,2})\b/))) { const g = (m[1] || m[2] || m[3]).replace(/^l/, ''); return 'L' + g.padStart(2, '0'); }
   if ((m = l.match(/\b(\d{1,2})(?:st|nd|rd|th)\s*(?:floor|level)\b/))) return 'L' + m[1].padStart(2, '0');
   if ((m = l.match(new RegExp('\\b(' + Object.keys(LOC_ORD).join('|') + ')\\s+floor\\b')))) return 'L' + String(LOC_ORD[m[1]]).padStart(2, '0');
@@ -48,7 +47,7 @@ function rpLoc(t) {
   for (const [ty, c] of Object.entries(t.codes || {})) { const k = locCodeKind(ty); if (!k || !c) continue;
     if (k === 'f') { const v = locFloorCode(c); if (!v) continue; if (!o.f) o.f = v; else if (o.f === 'Basement' && /^B0\d$/.test(v)) o.f = v; }
     else if (k === 'b') { if (!o.b && c.name) o.b = locClean(c.name); }
-    else if (k === 'r') { const v = String(c.name || c.short || ''); if (LOC_AREA.test(v)) { if (!o.a) o.a = locArea(v.match(LOC_AREA)[0]); } else if (v && !locFloor(v)) { const cv = locClean(v); if (!o.r) o.r = '\u0000' + cv; else if (locNear(o.r, cv)) o.r = cv; } }
+    else if (k === 'r') { const v = String(c.name || c.short || ''); if (LOC_AREA.test(v)) { if (!o.a) o.a = locArea(v.match(LOC_AREA)[0]); } else if (v && !locFloor(v)) { const cv = /^elevation( room)?$/i.test(v.trim()) ? 'Facade' : locClean(v); if (!o.r) o.r = '\u0000' + cv; else if (locNear(o.r, cv)) o.r = cv; } }
     else if (k === 'a') { const v = String(c.name || c.short || ''); if (!o.a && LOC_AREA.test(v)) o.a = locArea(v.match(LOC_AREA)[0]); } }
   if (o.r && o.r[0] === '\u0000') o.r = o.f || o.b ? o.r.slice(1) : null;
   if (o.a && !o.f && !o.b && !o.r) o.a = null;
@@ -66,3 +65,21 @@ function rpLocAgg(ts) {
   return [b, f, r, r ? a : (a || null)].filter(Boolean).join(' › '); }
 /* SVG line: 📍 L07 › Twin Room › Dry Area (separators grey) */
 const rpLocSvg = (txt, x, y, w, fs) => { if (!txt) return ''; const f = rpFit('📍 ' + txt, w, fs || 9, false); return `<text x="${x}" y="${y}" font-size="${fs || 9}" fill="#2b3a52"><title>Location: ${esc(txt)}</title>${esc(f).replace(/ › /g, ' <tspan fill="#9aa5b5">›</tspan> ')}</text>`; };
+
+/* v9.40: a location as complete as possible — when the activity itself has no floor (a delivery, a subcontract, a network completion),
+   the floor (and the room, if it has none) is taken from the work it releases: its successors, nearest first (up to 4 links on). */
+function rpLocFull(t) {
+  if (!t) return null; if (t._locF !== undefined) return t._locF; const own = rpLoc(t);
+  if (own && own.f) return (t._locF = { ...own, from: null });
+  let lvl = (t.succ || []).map(l => l.to), seen = new Set([t.id]), found = [];
+  for (let d = 0; d < 4 && lvl.length && !found.length; d++) { const nx = [];
+    for (const s of lvl) { if (!s || seen.has(s.id)) continue; seen.add(s.id); if (s.type === 'TT_LOE' || s.type === 'TT_WBS') continue; const L = rpLoc(s); if (L && L.f) found.push(s); else (s.succ || []).forEach(l => nx.push(l.to)); }
+    lvl = nx; }
+  const fl = [...new Set(found.map(s => rpLoc(s).f))].sort((a, b) => LOC_FK(a) - LOC_FK(b));
+  /* work spread over the whole building (testing, handover…) is not a location */
+  if (!found.length || found.length > 40 || fl.length > 8) return (t._locF = own ? { ...own, from: null } : null);
+  const f = fl.length === 1 ? fl[0] : fl[0].split('–')[0] + '–' + fl[fl.length - 1].split('–').pop() + ' · ' + fl.length + ' floors';
+  const rs = [...new Set(found.map(s => rpLoc(s).r).filter(Boolean))], bs = [...new Set(found.map(s => rpLoc(s).b).filter(Boolean))];
+  const o = { b: (own && own.b) || (bs.length === 1 ? bs[0] : null), f, r: (own && own.r) || (rs.length === 1 ? rs[0] : null), a: own && own.a || null, from: found.length + ' activit' + (found.length === 1 ? 'y' : 'ies') + ' it releases' };
+  o.parts = [o.b, o.f, o.r, o.a].filter(Boolean); return (t._locF = o.parts.length ? o : null); }
+const rpLocFullTxt = t => { const l = rpLocOn() && rpLocFull(t); return l ? l.parts.join(' › ') : ''; };
