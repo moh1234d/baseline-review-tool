@@ -17,3 +17,10 @@ for name in ('index.html', 'Baseline_Review_Tool_v' + VER + '.html'):
     open(os.path.join(out, name), 'w', encoding='utf-8').write(html)
 open(os.path.join(out, '_headers'), 'w').write(open(os.path.join(root, '_headers')).read())
 print(len(html) // 1024, 'KB -> dist/index.html  v' + VER)
+# Offline check copies: python3 build.py --offline-rev N  ->  dist/Baseline_Review_Tool_v<VER>_OFFLINE_R<NN>.html
+# The revision shows in the version badge; index.html (the published file) never carries it.
+import sys
+if '--offline-rev' in sys.argv:
+    rev = 'R%02d' % int(sys.argv[sys.argv.index('--offline-rev') + 1]); shown = VER + ' · OFFLINE ' + rev
+    off = html.replace("E.VERSION = '" + VER + "'", "E.VERSION = '" + shown + "'").replace('Version ' + VER + '<', 'Version ' + shown + '<')
+    name = 'Baseline_Review_Tool_v' + VER + '_OFFLINE_' + rev + '.html'; open(os.path.join(out, name), 'w', encoding='utf-8').write(off); print('offline copy ->', name)
