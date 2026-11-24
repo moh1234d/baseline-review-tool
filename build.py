@@ -21,6 +21,6 @@ print(len(html) // 1024, 'KB -> dist/index.html  v' + VER)
 # The revision shows in the version badge; index.html (the published file) never carries it.
 import sys
 if '--offline-rev' in sys.argv:
-    rev = 'R%02d' % int(sys.argv[sys.argv.index('--offline-rev') + 1]); shown = VER + ' · OFFLINE ' + rev
-    off = html.replace("E.VERSION = '" + VER + "'", "E.VERSION = '" + shown + "'").replace('Version ' + VER + '<', 'Version ' + shown + '<')
+    rev = 'R%02d' % int(sys.argv[sys.argv.index('--offline-rev') + 1]); shown = VER + ' · OFFLINE ' + rev; tag = VER + '_OFFLINE_' + rev
+    off = open(src + 'shell.html', encoding='utf-8').read().replace('/*__JS__*/', js.replace('</script>', '<\\/script>').replace("E.VERSION = '" + VER + "'", "E.VERSION = '" + tag + "'").replace("E.VERSION = '1.0'", "E.VERSION = '" + tag + "'")).replace('__VERSION__', shown)
     name = 'Baseline_Review_Tool_v' + VER + '_OFFLINE_' + rev + '.html'; open(os.path.join(out, name), 'w', encoding='utf-8').write(off); print('offline copy ->', name)
