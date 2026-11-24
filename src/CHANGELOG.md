@@ -1,3 +1,7 @@
+## v9.40 (2026-11-24)
+- Recovery planner: new view “F · Impact summary” — one bar per path showing the delay that path puts on the project finish (finish delay minus the float the path still has to the finish, calendar days), against the finish line. Each path is named after the activity delaying it now, with its ID and location; later paths are left out; a note says how many paths hold the finish together.
+- Location: fuller where the file allows — an activity with no floor of its own (a delivery, a subcontract) takes the floor from the work it releases (said in grey); “Podium & L03” keeps its floor; the code value “Elevation Room” reads “Facade”. Work that leads into the whole building is not given a location.
+
 ## v9.39 (2026-11-24)
 - Recovery planner: the “Delay started at” card shows the full activity name, sized to the card (smaller type, wraps to up to three lines; full ID and name on hover) instead of cutting it at 40 characters.
 

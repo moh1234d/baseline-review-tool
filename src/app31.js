@@ -83,3 +83,23 @@ function rpLocFull(t) {
   const o = { b: (own && own.b) || (bs.length === 1 ? bs[0] : null), f, r: (own && own.r) || (rs.length === 1 ? rs[0] : null), a: own && own.a || null, from: found.length + ' activit' + (found.length === 1 ? 'y' : 'ies') + ' it releases' };
   o.parts = [o.b, o.f, o.r, o.a].filter(Boolean); return (t._locF = o.parts.length ? o : null); }
 const rpLocFullTxt = t => { const l = rpLocOn() && rpLocFull(t); return l ? l.parts.join(' › ') : ''; };
+
+/* v9.40: F · Impact summary — one bar per path = the delay that path puts on the project finish (finish slip minus the float the path still has to the finish, calendar days).
+   Each path is named after the activity delaying it now, with that activity's location. Paths whose own work starts LATER are left out. */
+function rpImpactRows(R, D) {
+  const N = rpNums(D), fin = Math.max(0, Math.round(N.slip || 0)), M = R.B.M;
+  const rows = rpPathTrains(R).filter(x => x.T && !(x.p.tierInfo && x.p.tierInfo.tier === 3)).map(({ p, T }) => { const dn = rpDelayNow(T), t = dn && dn.t;
+    const e = p.code ? M.tasks.find(x => x.code === p.code) : null, k = e && e.durWd ? e.durCal / e.durWd : e && e.tfWd ? e.tfCal / e.tfWd : 7 / 6, relCd = Math.round((p.rel || 0) * (isFinite(k) && k > 0 ? k : 7 / 6));
+    const L = t ? rpLocFull(t) : null;
+    return { rank: p.rank, code: t ? t.code : '', name: t ? t.name : (p.label || p.name || ''), loc: rpLocOn() && L ? L.parts.join(' › ') : '', locFrom: L && L.from, noFloor: !!(L && !L.f), imp: Math.max(0, fin - relCd), relCd, label: p.label || '' }; });
+  return { rows, fin, N }; }
+function rpImpactView(D, R) {
+  const { rows, fin, N } = rpImpactRows(R, D); if (!rows.length) return '<p class="hint">No path in progress or starting soon.</p>';
+  const mx = Math.max(1, fin, ...rows.map(r => r.imp)), full = rows.filter(r => r.imp >= fin && fin > 0).length, step = mx <= 12 ? 2 : mx <= 30 ? 3 : mx <= 60 ? 5 : 10, ticks = []; for (let v = 0; v <= mx; v += step) ticks.push(v);
+  const pc = v => (v / mx * 100).toFixed(2) + '%', hidden = rpPathTrains(R).filter(x => x.T && x.p.tierInfo && x.p.tierInfo.tier === 3).length;
+  const row = r => `<div class="rpi-row"><div class="rpi-l"><span class="rpi-rk">Path ${r.rank}</span><div class="rpi-n"><b title="${esc(r.name)}">${esc(r.name)}</b><small><i>${esc(r.code)}</i> · 📍 ${r.loc ? esc(r.loc).replace(/ › /g, ' <u>›</u> ') + (r.locFrom ? ` <em>(floor from the ${esc(r.locFrom)})</em>` : r.noFloor ? ' <em>(the file gives no floor)</em>' : '') : '<em>whole building — the file gives no floor or room for it</em>'}</small></div></div>`
+    + `<div class="rpi-t"><span class="rpi-b ${r.imp >= fin ? 'full' : ''}" style="width:${pc(r.imp)}"></span><span class="rpi-v ${r.imp >= fin ? 'full' : ''}" style="left:${pc(Math.max(r.imp, fin))}">+${r.imp} d <small>on the finish</small></span></div></div>`;
+  return `<div class="rpi" style="--rpifin:${pc(fin)}"><div class="rpi-hd"><b>Impact of each path on the project finish</b><span>Baseline finish <b>${esc(RPD(N.tg.fA))}</b></span><span>Forecast <b class="r">${esc(RPD(N.tg.fB))}</b></span><b class="r">${rpDays(N.slip)}</b><span class="m">${rows.length} path${rows.length === 1 ? '' : 's'} in progress or starting soon${hidden ? ' · ' + hidden + ' later path' + (hidden === 1 ? '' : 's') + ' not shown' : ''}</span></div>`
+    + `<div class="rpi-ax"><div class="rpi-l"></div><div class="rpi-t">${ticks.map(v => `<i style="left:${pc(v)}">+${v} d</i>`).join('')}</div></div>`
+    + `<div class="rpi-body">${rows.map(row).join('')}<div class="rpi-fin"><div class="rpi-l"></div><div class="rpi-t"><span>project finish ${rpDays(N.slip)} · ${esc(RPD(N.tg.fB))}</span></div></div></div>`
+    + (fin > 0 ? `<p class="rpi-note"><b>${full} of ${rows.length} path${rows.length === 1 ? '' : 's'} hold the finish at the full +${fin} d.</b> ${full > 1 ? 'They drive it together: recovering one of them alone does not bring the finish forward — each must recover. ' : ''}The figure is the finish delay minus the float the path still has to the finish (calendar days). Each path is named after the activity delaying it now.</p>` : '') + '</div>'; }
