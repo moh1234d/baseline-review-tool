@@ -33,8 +33,14 @@ E.delayTrain = function (A, B, o) {
   }
   if (o.chain && o.chain.length) chain.push(...o.chain); else chain.reverse();
   /* 2. slip per activity and the delay each one added */
-  let prev = 0; if (o.joins) { const ja = aBy.get(o.joins.code); if (ja && ja.ef != null && o.joins.ef != null) prev = Math.round(o.joins.ef - ja.ef); } const rows = chain.map(t => { const a = aBy.get(t.code), slip = a && a.ef != null && t.ef != null ? Math.round(t.ef - a.ef) : null, s = slip == null ? prev : slip, own = s - prev; prev = s;
-    return { t, a, oos: oos.has(t.id), code: t.code, name: t.name, status: t.status, slip: s, isNew: !a, own, pDur: a && a.ef != null && a.es != null ? Math.round(a.ef - a.es) : null, cDur: t.ef != null && t.es != null ? Math.round(t.ef - t.es) : null }; });
+  /* v9.38: the slip an activity passes along the path is measured at the end its outgoing link uses: SS and SF pass the START slip,
+     FS and FF the FINISH slip. An activity linked to the next one only by SS hands on its start; its late finish does not drive the path. */
+  const outLk = chain.map((t, i) => { const nx = chain[i + 1]; if (!nx) return null; const ls = nx.pre.filter(l => l.from === t); if (!ls.length) return null;
+    return ls.find(l => l.type === 'FS' || l.type === 'FF') || ls[0]; });
+  let prev = 0; if (o.joins) { const ja = aBy.get(o.joins.code); if (ja && ja.ef != null && o.joins.ef != null) prev = Math.round(o.joins.ef - ja.ef); } const rows = chain.map((t, i) => { const a = aBy.get(t.code), lk = outLk[i], byStart = !!(lk && (lk.type === 'SS' || lk.type === 'SF')),
+      fSlip = a && a.ef != null && t.ef != null ? Math.round(t.ef - a.ef) : null, sSlip = a && a.es != null && t.es != null ? Math.round(t.es - a.es) : null,
+      slip = byStart ? (sSlip != null ? sSlip : fSlip) : fSlip, s = slip == null ? prev : slip, own = s - prev; prev = s;
+    return { t, a, oos: oos.has(t.id), code: t.code, name: t.name, status: t.status, slip: s, fSlip, sSlip, via: lk ? lk.type : null, byStart, isNew: !a, own, pDur: a && a.ef != null && a.es != null ? Math.round(a.ef - a.es) : null, cDur: t.ef != null && t.es != null ? Math.round(t.ef - t.es) : null }; });
   const oi = rows.findIndex(r => r.own >= cfg.originMin);
   let st = 0; if (oi > 0) { for (let i = oi - 1; i >= 0; i--) if (Math.abs(rows[i].slip) <= 1) { st = i; break; } }
   const R = rows.slice(st), origin = oi >= 0 ? R[oi - st] : null;

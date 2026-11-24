@@ -66,4 +66,16 @@ const assert=require('assert');let n=0;const eq=(name,got,want)=>{assert.strictE
  const A30=mkM([w('r','P','P',null),w('1','L1','Level 1','r')],Array.from({length:30},(_,i)=>['A'+(i+1),'1']));
  eq('different project: same IDs, different WBS',E.fileMatch(A30,D).verdict,'diff');
 }
+{ // v9.38 slip passed along an SS link is the START slip
+ const mkT=(code,o)=>Object.assign({id:code,code,name:code,wbs:'w',clndr:'c',type:'TT_Task',status:'TK_Complete',pre:[],succ:[],tfWd:0},o);
+ const ln=(a,b,type)=>{const l={from:a,to:b,type,lagWd:0,lagCal:0};b.pre.push(l);a.succ.push(l);};
+ const A={tasks:[mkT('P',{es:D('2026-01-05'),ef:D('2026-01-09')}),mkT('X',{es:D('2026-01-12'),ef:D('2026-01-23')}),mkT('Y',{es:D('2026-01-14'),ef:D('2026-01-20')}),mkT('Z',{es:D('2026-01-21'),ef:D('2026-01-30')})],wbs:{w:{id:'w',name:'W',parent:null}}};
+ const P=mkT('P',{as:D('2026-01-05'),es:D('2026-01-05'),ef:D('2026-01-09')}),X=mkT('X',{status:'TK_Active',as:D('2026-01-12'),es:D('2026-01-12'),ef:D('2026-02-27')}),Y=mkT('Y',{as:D('2026-01-14'),es:D('2026-01-14'),ef:D('2026-01-20')}),Z=mkT('Z',{as:D('2026-01-21'),es:D('2026-01-21'),ef:D('2026-02-04')});
+ ln(P,X,'FS');ln(X,Y,'SS');ln(Y,Z,'FS');
+ const B={tasks:[P,X,Y,Z],wbs:{w:{id:'w',name:'W',parent:null}},cal:{c:cal},dataDate:D('2026-02-02')};
+ const T=E.delayTrain(A,B,{targetCode:'Z',chain:[P,X,Y,Z]}),rows=T.cars.flatMap(c=>c.rows),r=c=>rows.find(x=>x.code===c)||{own:0};
+ eq('SS: activity started on time passes 0 d although its finish is late',r('X').own,0);
+ eq('SS: no fake recovery on the successor',r('Y').own,0);
+ eq('the real delay stays where it entered',r('Z').own,5);
+}
 console.log(n+' checks passed');
