@@ -1,3 +1,11 @@
+## v9.41 (2026-11-24) — review corrections (offline check first)
+- Summary strip at the top: one sentence (forecast, days late, how many work fronts hold the date together) and three data-confidence chips (same project, dates match P6, progress recorded).
+- Warning when the update records little or no progress since the previous file (share of in-progress activities with the same remaining duration, share of due activities not started; threshold in Setup).
+- Every path with no float to the finish is shown, whatever the Paths number (up to a Setup limit); displayed paths are numbered 1..N without gaps; hidden paths are counted, not listed by number. Path 1 is called “one of N paths driving the finish” when it is not alone; driving work fronts that are on no listed path are listed under the summary.
+- Wording: work still to come is “later / earlier than baseline” (only done or in-progress work has delay “added” or “recovered”); “Slip at end” → “Stage late by”; “Delay started at” → “First delay on this path”, with “N late here · M reach the finish”; “Delay starts here” → “First delay here”; “Delaying now” → “Holding the path”.
+- With no lever switched on, the two lever boxes become one “Recovery options” box and the empty add-up chart is hidden.
+- The P6 check report moves to the bottom under “Data checks for the planner”; the summary keeps its verdict as a chip. A legend says negative total float = days late against the contract finish.
+
 ## v9.40 (2026-11-24)
 - Recovery planner: new view “F · Impact summary” — one bar per path showing the delay that path puts on the project finish (finish delay minus the float the path still has to the finish, calendar days), against the finish line. Each path is named after the activity delaying it now, with its ID and location; later paths are left out; a note says how many paths hold the finish together.
 - Location: fuller where the file allows — an activity with no floor of its own (a delivery, a subcontract) takes the floor from the work it releases (said in grey); “Podium & L03” keeps its floor; the code value “Elevation Room” reads “Facade”. Work that leads into the whole building is not given a location.

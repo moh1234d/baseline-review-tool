@@ -79,11 +79,11 @@ function rpDelayNow(T) { if (!T || !T.cars) return null; if (T._dnFor === T) ret
 const rpDnTip = (info, rank) => { if (info.t) info.tf = rpTF(info.t); const tf = info.tf == null ? '–' : rpFlt(info.tf), lt = info.late == null ? 'not in baseline file' : info.late > 0 ? '+' + info.late + ' d late' : info.late < 0 ? Math.abs(info.late) + ' d early' : 'on time';
   const why = (info.outside ? 'It sits on the path this one branches from, so ' + (rank ? 'Path ' + rank : 'this path') + ' waits for it.' : 'Nothing unfinished drives it, so the rest of ' + (rank ? 'Path ' + rank : 'the path') + ' waits for it.') + (info.held.length ? ' <b>' + info.held.slice(0, 3).map(esc).join(', ') + (info.held.length > 3 ? ' …' : '') + '</b> ' + (info.held.length === 1 ? 'is' : 'are') + ' in progress but only waiting for it.' : '');
   const chips = (info.flow || []).map((f, i) => (i ? `<span class="dn-ar">${esc(f.lk)} ›</span>` : '') + `<span class="dn-chip${i === 0 ? ' c' : f.act ? ' w' : ''}">${esc(f.code)}</span>`).join('') + (info.more ? `<span class="dn-ar">› +${info.more} more</span>` : '');
-  return `<div class="dn-top"><span class="k">DELAYING ${rank ? 'PATH ' + rank + ' ' : 'THIS PATH '}NOW</span><span class="dn-late ${info.late == null ? 'na' : info.late > 0 ? '' : 'ok'}">${lt}</span></div><div class="dn-code">${esc(info.code)}</div><div class="dn-n">${esc(info.name)}</div>`
+  return `<div class="dn-top"><span class="k">HOLDING ${rank ? 'PATH ' + rank + ' ' : 'THIS PATH '}NOW</span><span class="dn-late ${info.late == null ? 'na' : info.late > 0 ? '' : 'ok'}">${lt}</span></div><div class="dn-code">${esc(info.code)}</div><div class="dn-n">${esc(info.name)}</div>`
     + `<table class="dn-t"><tr><td>Status</td><td>${info.st}</td></tr>${info.t && rpLocTxt(info.t) ? `<tr><td>Location</td><td>${esc(rpLocTxt(info.t))}</td></tr>` : ''}<tr><td>Finish now / baseline</td><td>${esc(RPD(info.ef))} / ${info.bf != null ? esc(RPD(info.bf)) : 'not in baseline file'}</td></tr><tr><td>Total float</td><td class="${info.tf != null && info.tf < 0 ? 'r' : ''}">${tf}</td></tr></table>`
     + `<div class="dn-why">${why}</div>${(info.flow || []).length > 1 ? `<div class="dn-chips">${chips}</div>` : ''}`; };
 const rpDnAttr = (info, rank) => info ? ` data-rpdn="${esc(info.key)}" data-rpdnr="${rank || ''}"` : '';
-const rpDnPinSvg = (x, y) => `<g data-rpdnpin="1" style="cursor:help"><rect x="${x}" y="${y}" width="98" height="16" rx="8" fill="#c0392b" stroke="#fff" stroke-width="1.2"/><text x="${x + 49}" y="${y + 11.5}" font-size="9" font-weight="800" fill="#fff" text-anchor="middle" letter-spacing=".3">DELAYING NOW</text></g>`;
+const rpDnPinSvg = (x, y) => `<g data-rpdnpin="1" style="cursor:help"><rect x="${x}" y="${y}" width="112" height="16" rx="8" fill="#c0392b" stroke="#fff" stroke-width="1.2"/><text x="${x + 56}" y="${y + 11.5}" font-size="9" font-weight="800" fill="#fff" text-anchor="middle" letter-spacing=".3">HOLDING THE PATH</text></g>`;
 /* the hover note */
 function rpDnShow(el) { const info = RPDN[el.dataset.rpdn]; if (!info) return; let tp = document.getElementById('rpdn-tip'); if (!tp) { tp = document.createElement('div'); tp.id = 'rpdn-tip'; tp.setAttribute('role', 'tooltip'); document.body.appendChild(tp); }
   tp.innerHTML = rpDnTip(info, +el.dataset.rpdnr || 0); tp.hidden = false; const b = el.getBoundingClientRect(), r = tp.getBoundingClientRect(), W = window.innerWidth, H = window.innerHeight;
@@ -100,7 +100,7 @@ window.addEventListener('scroll', rpDnHide, true); document.addEventListener('ke
 const rpPrioOn = () => S.cfg.rpPrio !== false && S.cfg.rpPrio !== 'off';
 const rpNowD = () => rpClamp(S.cfg.rpNowDays, 1, 60, 7), rpSoonD = () => Math.max(rpNowD(), rpClamp(S.cfg.rpSoonDays, 2, 180, 30));
 const rpShowLater = () => !!S.cfg.rpShowLater;
-const rpPrioKey = () => [rpPrioOn(), rpNowD(), rpSoonD(), rpShowLater()].join('|');
+const rpPrioKey = () => [rpPrioOn(), rpNowD(), rpSoonD(), rpShowLater(), S.cfg.rpAllDriving, S.cfg.rpMaxDriving].join('|');
 const RP_TIER = { 1: ['NOW', 'now'], 2: ['THIS MONTH', 'soon'], 3: ['LATER', 'later'] };
 function rpTierOf(M, p) { const dd = M.dataDate, ch = (p.chain || []).filter(t => t && t.status !== 'TK_Complete' && t.type !== 'TT_LOE' && t.type !== 'TT_WBS');
   const act = ch.find(t => t.status === 'TK_Active'), f = act || ch.slice().sort((a, b) => (a.es || 0) - (b.es || 0))[0];
@@ -111,10 +111,17 @@ function rpPrioritise(M, all, n, R) { all.forEach(p => { p.tierInfo = rpTierOf(M
   R.pathsHidden = []; if (!rpPrioOn()) { all.forEach(p => { p.tierInfo = null; }); return all.slice(0, n); }
   const p1 = all.filter(p => p.rank === 1), rest = all.filter(p => p.rank !== 1).sort((a, b) => (a.tierInfo.tier === 3 ? 3 : 1) - (b.tierInfo.tier === 3 ? 3 : 1) || a.tierInfo.tier - b.tierInfo.tier || a.rank - b.rank);
   const near = rest.filter(p => p.tierInfo.tier < 3), later = rest.filter(p => p.tierInfo.tier === 3);
-  const sel = p1.concat(near.slice(0, Math.max(0, n - p1.length))); const maxRk = Math.max(...sel.map(p => p.rank));
+  /* v9.41: every path with no float to the finish is shown, whatever the Paths number (up to rpMaxDriving); then renumbered 1..N as displayed */
+  const allDrv = !/^(no|off|false|0)$/i.test(String(S.cfg.rpAllDriving == null ? 'yes' : S.cfg.rpAllDriving)), cap = Math.max(n, Math.min(40, Math.round(+S.cfg.rpMaxDriving || 20)));
+  const drv = allDrv ? near.filter(p => !(p.rel > 0.5)) : [], take = Math.max(Math.max(0, n - p1.length), Math.min(drv.length, cap - p1.length));
+  const nearSel = allDrv ? drv.concat(near.filter(p => !drv.includes(p))).slice(0, take) : near.slice(0, take);
+  const sel = p1.concat(nearSel.sort((a, b) => a.tierInfo.tier - b.tierInfo.tier || a.rank - b.rank)); const maxRk = Math.max(...sel.map(p => p.rank));
   const lat = rpShowLater() ? later.filter(p => p.rank < maxRk || sel.length < n).slice(0, n) : [];
   R.pathsHidden = rest.filter(p => !sel.includes(p) && !lat.includes(p)).map(p => ({ rank: p.rank, tier: p.tierInfo.tier, start: p.tierInfo.start }));
-  return sel.concat(lat); }
+  const out = sel.concat(lat); out.forEach((p, i) => { p.rank0 = p.rank; p.rank = i + 1; }); return out; }
+/* how many displayed paths have no float to the finish (path 1 included) */
+const rpCoDrive = () => { const P = (S.rp && S.rp.paths) || []; return P.filter(p => p.rank === 1 || (!(p.rel > 0.5) && !(p.tierInfo && p.tierInfo.tier === 3))).length; };
+const rpDrvLbl = () => rpCoDrive() > 1 ? 'PATH 1 OF ' + rpCoDrive() + ' DRIVING THE FINISH' : 'LONGEST PATH';
 const rpTierTag = p => { const ti = p && p.tierInfo; if (!ti) return ''; const [lb, cl] = RP_TIER[ti.tier]; return `<span class="rp-tier ${cl}" title="${esc(rpTierWhen(p))}">${lb}</span>`; };
 const rpTierWhen = p => { const ti = p && p.tierInfo; if (!ti || ti.start == null) return ''; return ti.act ? 'in progress since ' + RPD(ti.start) : 'starts ' + RPD(ti.start) + (ti.days >= 0 ? ' (in ' + ti.days + ' day' + (ti.days === 1 ? '' : 's') + ')' : ' (late to start)'); };
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-rpshowlater]'); if (!b) return; S.cfg.rpShowLater = !rpShowLater(); try { autosave(); } catch (x) { } const R = S.rp; if (R) { R.pathsN = null; R.pathIdx = 0; } runTrain('rp'); viewRecovery(); });

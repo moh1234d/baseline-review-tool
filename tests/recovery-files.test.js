@@ -56,7 +56,7 @@ const UPD2 = file('update-2.xer', project({ name: 'UPD2', dd: '2026-03-08', shif
   assert.deepStrictEqual(blocked, { banner: true, kpis: false, notes: 0, train: false, ids: 0 }, 'two different projects must be blocked: ' + JSON.stringify(blocked)); n++;
   await p.click('[data-rpmatchgo]'); await p.waitForFunction(() => S.rp.tr && S.rp.tr.train && !S.rp.tr.levBusy && S.rp.tr.lev, null, { timeout: 60000 });
   assert.ok(await p.evaluate(() => !!document.querySelector('.rpm.diff') && !!document.querySelector('.rp-kpis')), '"Compare anyway" shows the results with the red banner kept'); n++;
-  await load('A', BL); assert.ok(await p.evaluate(() => !!document.querySelector('.rpm.ok') && !document.querySelector('.rpm.diff') && S.rp.match.verdict === 'ok'), 'right baseline again -> "Same project"'); n++;
+  await load('A', BL); assert.ok(await p.evaluate(() => !!document.querySelector('.rps .rps-c.ok') && !document.querySelector('.rpm.diff') && S.rp.match.verdict === 'ok'), 'right baseline again -> "Same project"'); n++;
   await check('right baseline after another project');
   /* a missing baseline is never "on time" */
   const tip = await p.evaluate(() => rpDnTip({ t: null, code: 'X1', name: 'x', st: 'Not started', ef: 20000, bf: null, late: null, held: [], flow: [] }, 2));
