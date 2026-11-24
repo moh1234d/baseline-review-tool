@@ -1,3 +1,6 @@
+## v9.39 (2026-11-24)
+- Recovery planner: the “Delay started at” card shows the full activity name, sized to the card (smaller type, wraps to up to three lines; full ID and name on hover) instead of cutting it at 40 characters.
+
 ## v9.38 (2026-11-24)
 - Delay train / Recovery planner: the slip an activity passes along a path is now measured at the end its outgoing link uses — SS and SF pass the START slip, FS and FF the FINISH slip. Before, an activity linked to the next one only by SS was charged with its late finish (e.g. Blockworks King Room Wet Area L3: “+35 d added here”, then “−35 d recovered here” on the next stage) although it started on time and its finish drives nothing. Such a stage now shows its start slip with “via SS (start)”; the hover explains that its finish does not drive the path. Applies to the cards, slip at end, Gantt, Excel and Word report.
 
