@@ -100,7 +100,7 @@ window.addEventListener('scroll', rpDnHide, true); document.addEventListener('ke
 const rpPrioOn = () => S.cfg.rpPrio !== false && S.cfg.rpPrio !== 'off';
 const rpNowD = () => rpClamp(S.cfg.rpNowDays, 1, 60, 7), rpSoonD = () => Math.max(rpNowD(), rpClamp(S.cfg.rpSoonDays, 2, 180, 30));
 const rpShowLater = () => !!S.cfg.rpShowLater;
-const rpPrioKey = () => [rpPrioOn(), rpNowD(), rpSoonD(), rpShowLater(), S.cfg.rpAllDriving, S.cfg.rpMaxDriving].join('|');
+const rpPrioKey = () => [rpPrioOn(), rpNowD(), rpSoonD(), rpShowLater(), S.cfg.rpAllDriving, S.cfg.rpMaxDriving, (S.rp && S.rp.B ? rpOrdGet(S.rp.B.M).join(',') : '')].join('|');
 const RP_TIER = { 1: ['NOW', 'now'], 2: ['THIS MONTH', 'soon'], 3: ['LATER', 'later'] };
 function rpTierOf(M, p) { const dd = M.dataDate, ch = (p.chain || []).filter(t => t && t.status !== 'TK_Complete' && t.type !== 'TT_LOE' && t.type !== 'TT_WBS');
   const act = ch.find(t => t.status === 'TK_Active'), f = act || ch.slice().sort((a, b) => (a.es || 0) - (b.es || 0))[0];
@@ -108,7 +108,7 @@ function rpTierOf(M, p) { const dd = M.dataDate, ch = (p.chain || []).filter(t =
   const st = act ? (act.as != null ? act.as : act.es) : f.es, days = st == null || dd == null ? 1e9 : st - dd;
   return { tier: act || days <= rpNowD() ? 1 : days <= rpSoonD() ? 2 : 3, start: st, act: !!act, days: Math.round(days), code: f.code, name: f.name }; }
 function rpPrioritise(M, all, n, R) { all.forEach(p => { p.tierInfo = rpTierOf(M, p); });
-  R.pathsHidden = []; if (!rpPrioOn()) { all.forEach(p => { p.tierInfo = null; }); return all.slice(0, n); }
+  R.pathsHidden = []; all.forEach(p => { p.primary = p.rank === 1; }); if (!rpPrioOn()) { all.forEach(p => { p.tierInfo = null; }); return all.slice(0, n); }
   const p1 = all.filter(p => p.rank === 1), rest = all.filter(p => p.rank !== 1).sort((a, b) => (a.tierInfo.tier === 3 ? 3 : 1) - (b.tierInfo.tier === 3 ? 3 : 1) || a.tierInfo.tier - b.tierInfo.tier || a.rank - b.rank);
   const near = rest.filter(p => p.tierInfo.tier < 3), later = rest.filter(p => p.tierInfo.tier === 3);
   /* v9.41: every path with no float to the finish is shown, whatever the Paths number (up to rpMaxDriving); then renumbered 1..N as displayed */
@@ -118,7 +118,27 @@ function rpPrioritise(M, all, n, R) { all.forEach(p => { p.tierInfo = rpTierOf(M
   const sel = p1.concat(nearSel.sort((a, b) => a.tierInfo.tier - b.tierInfo.tier || a.rank - b.rank)); const maxRk = Math.max(...sel.map(p => p.rank));
   const lat = rpShowLater() ? later.filter(p => p.rank < maxRk || sel.length < n).slice(0, n) : [];
   R.pathsHidden = rest.filter(p => !sel.includes(p) && !lat.includes(p)).map(p => ({ rank: p.rank, tier: p.tierInfo.tier, start: p.tierInfo.start }));
-  const out = sel.concat(lat); out.forEach((p, i) => { p.rank0 = p.rank; p.rank = i + 1; }); return out; }
+  p1.forEach(p => { p.primary = true; });
+  let out = sel.concat(lat);
+  /* v9.41 R05: paths that hold the finish together can be put in the user's own order (saved per project) */
+  { const ord = rpOrdGet(M), isD = p => p.primary || (!(p.rel > 0.5) && p.tierInfo.tier !== 3), d = out.filter(isD);
+    if (ord.length && d.length > 1) { const pos = c => { const i = ord.indexOf(c); return i < 0 ? 1e6 : i; }; const ds = d.map((p, i) => [p, i]).sort((a, b) => pos(a[0].code) - pos(b[0].code) || a[1] - b[1]).map(x => x[0]); out = ds.concat(out.filter(p => !isD(p))); } }
+  out.forEach((p, i) => { p.rank0 = p.rank; p.rank = i + 1; }); return out; }
+const rpOrdKey = M => 'brt.rpOrder.' + String((M && M.proj && M.proj.proj_short_name) || 'x').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+const rpOrdGet = M => { const v = LS.get(rpOrdKey(M), []); return Array.isArray(v) ? v : []; };
+const rpIsDrvP = p => p.primary || (!(p.rel > 0.5) && !(p.tierInfo && p.tierInfo.tier === 3));
+function rpOrdMove(code, dir) { const R = S.rp, M = R.B.M, d = (R.paths || []).filter(rpIsDrvP).map(p => p.code), i = d.indexOf(code); if (i < 0) return;
+  if (dir === 'top') { d.splice(i, 1); d.unshift(code); } else { const j = i + dir; if (j < 0 || j >= d.length) return; d.splice(i, 1); d.splice(j, 0, code); }
+  LS.set(rpOrdKey(M), d); rpOrdApply(code); }
+function rpOrdApply(keep) { const R = S.rp, sel = keep || ((R.paths || [])[R.pathIdx || 0] || {}).code; R.paths = null; R.pt = null; R.ptKey = null; R.dnet = null; runTrain('rp'); const i = (R.paths || []).findIndex(p => p.code === sel); if (i >= 0 && i !== (R.pathIdx || 0)) { R.pathIdx = i; runTrain('rp'); } viewRecovery(); }
+/* the "Arrange" panel under the path selector */
+function rpOrdPanel(R) { const P = (R.paths || []).filter(rpIsDrvP); if (P.length < 2 || !rpPrioOn()) return ''; const L = rpPathTrains(R), custom = rpOrdGet(R.B.M).length > 0;
+  const row = (p, i) => { const ln = L.find(x => x.p === p), dn = ln && ln.T ? rpDelayNow(ln.T) : null, nm = dn ? dn.name : (p.label || p.name), loc = dn && dn.t ? rpLocFullTxt(dn.t) : '';
+    return `<li><span class="rpo-k">Path ${p.rank}</span><span class="rpo-n"><b>${esc(nm)}</b>${loc ? `<small>📍 ${esc(loc)}</small>` : ''}</span><span class="rpo-b"><button type="button" data-rpord="top" data-rpordc="${esc(p.code)}" ${i === 0 ? 'disabled' : ''} title="Move to the top">⤒</button><button type="button" data-rpord="-1" data-rpordc="${esc(p.code)}" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button><button type="button" data-rpord="1" data-rpordc="${esc(p.code)}" ${i === P.length - 1 ? 'disabled' : ''} title="Move down">▼</button></span></li>`; };
+  return `<details class="rpo" ${R.ordOpen ? 'open' : ''}><summary>Arrange the ${P.length} paths that drive the finish${custom ? ' · <b>your order</b>' : ''}</summary><p class="hint" style="margin:4px 0 6px">These paths have the same float, so the tool cannot rank them. Put first the one you want to see first; the paths are renumbered in your order in every view and report. Saved for this project.</p><ol>${P.map(row).join('')}</ol>${custom ? '<button type="button" class="btn sm ghost" data-rpord="reset">Back to the tool’s order</button>' : ''}</details>`; }
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-rpord]'); if (!b || !S.rp || !S.rp.B) return; const R = S.rp; R.ordOpen = true;
+  if (b.dataset.rpord === 'reset') { LS.set(rpOrdKey(R.B.M), []); rpOrdApply(); return; } rpOrdMove(b.dataset.rpordc, b.dataset.rpord === 'top' ? 'top' : +b.dataset.rpord); });
+document.addEventListener('toggle', e => { if (e.target && e.target.classList && e.target.classList.contains('rpo') && S.rp) S.rp.ordOpen = e.target.open; }, true);
 /* how many displayed paths have no float to the finish (path 1 included) */
 const rpCoDrive = () => { const P = (S.rp && S.rp.paths) || []; return P.filter(p => p.rank === 1 || (!(p.rel > 0.5) && !(p.tierInfo && p.tierInfo.tier === 3))).length; };
 const rpDrvLbl = () => rpCoDrive() > 1 ? 'PATH 1 OF ' + rpCoDrive() + ' DRIVING THE FINISH' : 'LONGEST PATH';

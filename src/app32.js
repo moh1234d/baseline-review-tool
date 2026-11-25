@@ -30,7 +30,7 @@ function rpStall(R) {
 const rpNum = v => Number(v).toLocaleString('en-US');
 /* the summary strip at the top of the page */
 function rpSummary(R, D) {
-  const T = D && D.train; if (!T) return ''; const N = rpNums(D), net = rpDriveNet(R), st = rpStall(R), m = rpMatch(), p6 = (() => { try { return rpP6(); } catch (e) { return null; } })();
+  const T = D && D.train; if (!T) return ''; const N = rpFinN(R, D), net = rpDriveNet(R), st = rpStall(R), m = rpMatch(), p6 = (() => { try { return rpP6(); } catch (e) { return null; } })();
   const late = Math.round(N.slip || 0), nf = net ? net.fronts.length : 0;
   let head = late > 0 ? `Forecast finish <b>${esc(RPD(N.tg.fB))}</b> — <b class="r">${late} day${late === 1 ? '' : 's'} later</b> than ${esc(RPD(N.tg.fA))}.` : late < 0 ? `Forecast finish <b>${esc(RPD(N.tg.fB))}</b> — ${-late} day${late === -1 ? '' : 's'} earlier than ${esc(RPD(N.tg.fA))}.` : `Forecast finish <b>${esc(RPD(N.tg.fB))}</b> — as the baseline.`;
   if (net && nf) head += nf === 1 ? ` One work front holds this date (${rpNum(net.n)} activities drive it).` : ` <b>${nf} work fronts hold this date together</b> (${rpNum(net.n)} activities drive it): recovering one front alone does not bring the finish forward.`;
@@ -46,3 +46,6 @@ function rpSummary(R, D) {
 /* v9.41: wording by phase — work still to come is "later / earlier than baseline"; only work done or under way has added or recovered delay */
 const rpCapC = (d, c) => { const fut = c && (c.phase === 'next' || c.phase === 'end'); return fut ? (d >= 1 ? 'later than baseline' : d <= -1 ? 'earlier than baseline' : 'as baseline') : (d >= 1 ? 'added here' : d <= -1 ? 'recovered here' : 'no change here'); };
 const rpCapRow = (d, c) => { const fut = c && (c.phase === 'next' || c.phase === 'end'); return fut ? (d <= -1 ? 'Earlier than baseline' : 'Later than baseline') : (d <= -1 ? 'Recovered here' : 'Delay added here'); };
+
+/* the project finish figures, whichever path is selected: taken from the path the engine traced to the finish */
+function rpFinN(R, D) { const N = rpNums(D); try { const pl = rpPathTrains(R).find(x => x.p.primary && x.T); if (pl && !pl.sel) return Object.assign({}, N, { tg: pl.T.target, slip: pl.T.target.slip }); } catch (e) { console.error(e); } return N; }

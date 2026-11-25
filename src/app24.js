@@ -11,7 +11,7 @@ function runTrain(k) {
   /* v8.3: Recovery planner — paths 1 to 3 to the finish; the selected one is analysed */
   if (k === 'rp') { const R = S.rp; const nP = Math.max(1, Math.min(30, Math.round(+S.cfg.rpPaths || 3))); const pk = nP + '|' + rpPrioKey(); if (!R.paths || R.pathsFor !== Bm || R.pathsN !== pk) { R.pathsN = pk; R.paths = []; try { const t0 = E.dlTargets(Bm)[0]; if (t0) R.paths = rpPrioritise(Bm, E.dlPathsRel(Bm, t0, rpPrioOn() ? Math.min(40, Math.max(nP * 3, nP + 8)) : nP).map(p => ({ rank: p.rank, code: p.end.code, name: p.end.name, tf: p.tf, rel: p.rel, label: p.label, into: p.into ? { code: p.into.code, name: p.into.name } : null, copies: p.copies || [], ef: p.end.ef, chain: p.chain, joins: p.joins || null })), nP, R); } catch (e) { console.error(e); } R.pathsFor = Bm; if (!(R.pathIdx < R.paths.length)) R.pathIdx = 0; }
     tcode = (R.paths[R.pathIdx || 0] || {}).code; }
-  try { const pp = k === 'rp' ? (S.rp.paths || [])[S.rp.pathIdx || 0] : null; D.train = E.delayTrain(ab[0], Bm, { targetCode: tcode, cfg: trCfg(), chain: pp && pp.rank > 1 ? pp.chain : null, joins: pp && pp.rank > 1 ? pp.joins : null }); } catch (e) { console.error(e); D.trainErr = e.message; return; }
+  try { const pp = k === 'rp' ? (S.rp.paths || [])[S.rp.pathIdx || 0] : null; D.train = E.delayTrain(ab[0], Bm, { targetCode: tcode, cfg: trCfg(), chain: pp && !pp.primary ? pp.chain : null, joins: pp && !pp.primary ? pp.joins : null }); } catch (e) { console.error(e); D.trainErr = e.message; return; }
   D.trainSel = D.train && D.train.origin ? D.train.cars.findIndex(c => c.isOrigin) : 0; D.levBusy = true;
   const tok = D.train, own = trSt(k);
   setTimeout(() => {

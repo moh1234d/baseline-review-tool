@@ -103,6 +103,7 @@ function viewRecovery() {
   { const mm = rpMatch(); if (mm && (mm.verdict !== 'ok' || !T)) h += rpMatchBar(); }
   if (rpMatchBlocked()) { $('#main').innerHTML = h + rpP6Card() + '</div>'; return; }
   h += rpSummary(R, D);
+  if (T) h += rpOrdPanel(R);
   if (!T) { $('#main').innerHTML = h + `<section class="card"><p class="hint" style="margin:0">${D.trainErr ? esc(D.trainErr) : 'Load the baseline (or the previous update) and the current update. The planner finds where the delay entered the driving chain, tests the mitigation levers with the what-if recalculation and lets you switch them on and off. Files loaded in Schedule comparison or Delay analysis are used automatically.'}</p></section>${rpAiPanel(D, R, null)}</div>`; return; }
   const N = rpNums(D), o = T.origin, lev = rpLevers(D);
   const kpi = (lab, big, sub, cl, tip) => `<div class="rp-k ${cl || ''}"${tip ? ` title="${tip}"` : ''}><span>${lab}</span><b>${big}</b><small>${sub}</small></div>`;

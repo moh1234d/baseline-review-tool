@@ -87,7 +87,7 @@ const rpLocFullTxt = t => { const l = rpLocOn() && rpLocFull(t); return l ? l.pa
 /* v9.40: F · Impact summary — one bar per path = the delay that path puts on the project finish (finish slip minus the float the path still has to the finish, calendar days).
    Each path is named after the activity delaying it now, with that activity's location. Paths whose own work starts LATER are left out. */
 function rpImpactRows(R, D) {
-  const N = rpNums(D), fin = Math.max(0, Math.round(N.slip || 0)), M = R.B.M;
+  const N = rpFinN(R, D), fin = Math.max(0, Math.round(N.slip || 0)), M = R.B.M;
   const rows = rpPathTrains(R).filter(x => x.T && !(x.p.tierInfo && x.p.tierInfo.tier === 3)).map(({ p, T }) => { const dn = rpDelayNow(T), t = dn && dn.t;
     const e = p.code ? M.tasks.find(x => x.code === p.code) : null, k = e && e.durWd ? e.durCal / e.durWd : e && e.tfWd ? e.tfCal / e.tfWd : 7 / 6, relCd = Math.round((p.rel || 0) * (isFinite(k) && k > 0 ? k : 7 / 6));
     const L = t ? rpLocFull(t) : null;
