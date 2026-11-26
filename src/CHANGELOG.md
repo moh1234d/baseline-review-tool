@@ -1,3 +1,6 @@
+## v9.44 (2026-11-26)
+- Recovery planner, Arrange paths: the panel now also lists the same-float groups that are not on screen (for example “NOW · 1 d of float · 7 paths”), with a button that raises the Paths number just enough to show that group so it can be arranged. A group that is only partly on screen says how many of its paths are missing. Hidden later paths are mentioned with the switch that shows them.
+
 ## v9.43 (2026-11-26) — users, permissions and activity log
 - Sign-in page with user name and password (replaces the browser pop-up). One admin (password set in Cloudflare) and users the admin creates; passwords are kept only as salted hashes; sessions end after a set time; an account locks after repeated wrong passwords.
 - Administration → Users and activity log (admin only): add, edit, disable, delete users and reset passwords; tick the sections each user can open and the functions each can use (load files, export). AI, Google Drive and changing Setup are for the admin only, also enforced on the server.
