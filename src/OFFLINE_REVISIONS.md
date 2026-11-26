@@ -7,3 +7,4 @@
 | v9.41 OFFLINE R03 | 2026-11-24 | Revision number added to the file name and the version badge; no change to results |
 | v9.41 OFFLINE R04 | 2026-11-24 | Stage cards: the change figure (“+35 d added here”, “later than baseline”) removed; Duration, Total float and Late by stay. Setup can switch it back on |
 | v9.41 OFFLINE R05 | 2026-11-25 | “Arrange the paths that drive the finish”: paths with the same float can be put in your own order (to the top / up / down / back to the tool’s order); they are renumbered in that order in every view; saved per project |
+| v9.41 OFFLINE R06 | 2026-11-26 | Arrange panel covers every group of paths with the same float (not only the driving group): one section per group, paths move inside their own group |

@@ -121,21 +121,27 @@ function rpPrioritise(M, all, n, R) { all.forEach(p => { p.tierInfo = rpTierOf(M
   p1.forEach(p => { p.primary = true; });
   let out = sel.concat(lat);
   /* v9.41 R05: paths that hold the finish together can be put in the user's own order (saved per project) */
-  { const ord = rpOrdGet(M), isD = p => p.primary || (!(p.rel > 0.5) && p.tierInfo.tier !== 3), d = out.filter(isD);
-    if (ord.length && d.length > 1) { const pos = c => { const i = ord.indexOf(c); return i < 0 ? 1e6 : i; }; const ds = d.map((p, i) => [p, i]).sort((a, b) => pos(a[0].code) - pos(b[0].code) || a[1] - b[1]).map(x => x[0]); out = ds.concat(out.filter(p => !isD(p))); } }
+  { const ord = rpOrdGet(M), gi = new Map(); out.forEach(p => { const k = rpGrpKey(p); if (!gi.has(k)) gi.set(k, k === 'D' ? -1 : gi.size); });
+    const pos = c => { const q = ord.indexOf(c); return q < 0 ? 1e6 : q; };
+    out = out.map((p, q) => [p, q]).sort((a, b) => gi.get(rpGrpKey(a[0])) - gi.get(rpGrpKey(b[0])) || (ord.length ? pos(a[0].code) - pos(b[0].code) : 0) || a[1] - b[1]).map(x => x[0]); }
   out.forEach((p, i) => { p.rank0 = p.rank; p.rank = i + 1; }); return out; }
 const rpOrdKey = M => 'brt.rpOrder.' + String((M && M.proj && M.proj.proj_short_name) || 'x').toLowerCase().replace(/[^a-z0-9]+/g, '-');
 const rpOrdGet = M => { const v = LS.get(rpOrdKey(M), []); return Array.isArray(v) ? v : []; };
 const rpIsDrvP = p => p.primary || (!(p.rel > 0.5) && !(p.tierInfo && p.tierInfo.tier === 3));
-function rpOrdMove(code, dir) { const R = S.rp, M = R.B.M, d = (R.paths || []).filter(rpIsDrvP).map(p => p.code), i = d.indexOf(code); if (i < 0) return;
+/* v9.41 R06: a group = paths with the same float (and the same NOW / THIS MONTH / LATER class); paths are arranged inside their group */
+const rpGrpKey = p => rpIsDrvP(p) ? 'D' : ((p.tierInfo ? p.tierInfo.tier : 0) + '|' + Math.round(p.rel || 0));
+function rpOrdMove(code, dir) { const R = S.rp, M = R.B.M, P = R.paths || [], me = P.find(p => p.code === code); if (!me) return; const k = rpGrpKey(me), d = P.filter(p => rpGrpKey(p) === k).map(p => p.code), i = d.indexOf(code);
   if (dir === 'top') { d.splice(i, 1); d.unshift(code); } else { const j = i + dir; if (j < 0 || j >= d.length) return; d.splice(i, 1); d.splice(j, 0, code); }
-  LS.set(rpOrdKey(M), d); rpOrdApply(code); }
+  let q = 0; LS.set(rpOrdKey(M), P.map(p => rpGrpKey(p) === k ? d[q++] : p.code)); rpOrdApply(code); }
 function rpOrdApply(keep) { const R = S.rp, sel = keep || ((R.paths || [])[R.pathIdx || 0] || {}).code; R.paths = null; R.pt = null; R.ptKey = null; R.dnet = null; runTrain('rp'); const i = (R.paths || []).findIndex(p => p.code === sel); if (i >= 0 && i !== (R.pathIdx || 0)) { R.pathIdx = i; runTrain('rp'); } viewRecovery(); }
 /* the "Arrange" panel under the path selector */
-function rpOrdPanel(R) { const P = (R.paths || []).filter(rpIsDrvP); if (P.length < 2 || !rpPrioOn()) return ''; const L = rpPathTrains(R), custom = rpOrdGet(R.B.M).length > 0;
-  const row = (p, i) => { const ln = L.find(x => x.p === p), dn = ln && ln.T ? rpDelayNow(ln.T) : null, nm = dn ? dn.name : (p.label || p.name), loc = dn && dn.t ? rpLocFullTxt(dn.t) : '';
-    return `<li><span class="rpo-k">Path ${p.rank}</span><span class="rpo-n"><b>${esc(nm)}</b>${loc ? `<small>📍 ${esc(loc)}</small>` : ''}</span><span class="rpo-b"><button type="button" data-rpord="top" data-rpordc="${esc(p.code)}" ${i === 0 ? 'disabled' : ''} title="Move to the top">⤒</button><button type="button" data-rpord="-1" data-rpordc="${esc(p.code)}" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button><button type="button" data-rpord="1" data-rpordc="${esc(p.code)}" ${i === P.length - 1 ? 'disabled' : ''} title="Move down">▼</button></span></li>`; };
-  return `<details class="rpo" ${R.ordOpen ? 'open' : ''}><summary>Arrange the ${P.length} paths that drive the finish${custom ? ' · <b>your order</b>' : ''}</summary><p class="hint" style="margin:4px 0 6px">These paths have the same float, so the tool cannot rank them. Put first the one you want to see first; the paths are renumbered in your order in every view and report. Saved for this project.</p><ol>${P.map(row).join('')}</ol>${custom ? '<button type="button" class="btn sm ghost" data-rpord="reset">Back to the tool’s order</button>' : ''}</details>`; }
+function rpOrdPanel(R) { const P = R.paths || []; if (P.length < 2 || !rpPrioOn()) return ''; const groups = []; P.forEach(p => { const k = rpGrpKey(p); let g = groups.find(x => x.k === k); if (!g) groups.push(g = { k, ps: [] }); g.ps.push(p); });
+  const multi = groups.filter(g => g.ps.length > 1); if (!multi.length) return ''; const L = rpPathTrains(R), custom = rpOrdGet(R.B.M).length > 0;
+  const row = (p, i, n) => { const ln = L.find(x => x.p === p), dn = ln && ln.T ? rpDelayNow(ln.T) : null, nm = dn ? dn.name : (p.label || p.name), loc = dn && dn.t ? rpLocFullTxt(dn.t) : '';
+    return `<li><span class="rpo-k">Path ${p.rank}</span><span class="rpo-n"><b>${esc(nm)}</b>${loc ? `<small>📍 ${esc(loc)}</small>` : ''}</span><span class="rpo-b"><button type="button" data-rpord="top" data-rpordc="${esc(p.code)}" ${i === 0 ? 'disabled' : ''} title="Move to the top of its group">⤒</button><button type="button" data-rpord="-1" data-rpordc="${esc(p.code)}" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button><button type="button" data-rpord="1" data-rpordc="${esc(p.code)}" ${i === n - 1 ? 'disabled' : ''} title="Move down">▼</button></span></li>`; };
+  const gl = g => g.k === 'D' ? 'Driving the finish · no float' : (g.ps[0].tierInfo ? RP_TIER[g.ps[0].tierInfo.tier][0] + ' · ' : '') + rpFlt(Math.max(0, rpRelU(g.ps[0]))) + ' of float';
+  const nP = multi.reduce((a, g) => a + g.ps.length, 0);
+  return `<details class="rpo" ${R.ordOpen ? 'open' : ''}><summary>Arrange paths with the same float · ${multi.length === 1 ? nP + ' paths' : multi.length + ' groups, ' + nP + ' paths'}${custom ? ' · <b>your order</b>' : ''}</summary><p class="hint" style="margin:4px 0 6px">Paths in one group have the same float, so the tool cannot rank them. Inside each group, put first the one you want to see first; a path stays in its own group. The paths are renumbered in your order in every view and report. Saved for this project.</p>${multi.map(g => `<h4 class="rpo-g">${esc(gl(g))} <small>${g.ps.length} paths</small></h4><ol>${g.ps.map((p, i) => row(p, i, g.ps.length)).join('')}</ol>`).join('')}${custom ? '<button type="button" class="btn sm ghost" data-rpord="reset">Back to the tool’s order</button>' : ''}</details>`; }
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-rpord]'); if (!b || !S.rp || !S.rp.B) return; const R = S.rp; R.ordOpen = true;
   if (b.dataset.rpord === 'reset') { LS.set(rpOrdKey(R.B.M), []); rpOrdApply(); return; } rpOrdMove(b.dataset.rpordc, b.dataset.rpord === 'top' ? 'top' : +b.dataset.rpord); });
 document.addEventListener('toggle', e => { if (e.target && e.target.classList && e.target.classList.contains('rpo') && S.rp) S.rp.ordOpen = e.target.open; }, true);
