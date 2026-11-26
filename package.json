@@ -5,7 +5,7 @@
   "description": "Single-file P6 schedule review tool; the build embeds the libraries so the tool also works offline.",
   "scripts": {
     "build": "python3 build.py",
-    "test": "node tests/recalc.test.js && node tests/worker.test.mjs && python3 build.py >/dev/null && node tests/recovery-files.test.js"
+    "test": "node tests/recalc.test.js && node tests/worker.test.mjs && python3 build.py >/dev/null && node tests/recovery-files.test.js && node tests/users.test.mjs"
   },
   "dependencies": {
     "docx": "8.5.0",

@@ -1,12 +1,42 @@
-import assert from 'assert'; import w, { check } from '../worker/index.js';
-const req = (pw) => new Request('https://x/', { headers: pw == null ? {} : { Authorization: 'Basic ' + btoa('any:' + pw) } });
-const env = { BRT_PASSWORD: 'secret1', ASSETS: { fetch: async () => new Response('page') } };
-assert.strictEqual((await check(req(null), env)).status, 401);
-assert.strictEqual((await check(req('wrong'), env)).status, 401);
-assert.strictEqual(await check(req('secret1'), env), null);
-assert.strictEqual((await check(req('secret1'), {})).status, 503);
-assert.strictEqual(await (await w.fetch(req('secret1'), env)).text(), 'page');
-assert.strictEqual((await w.fetch(req('nope'), env)).status, 401);
+import assert from 'assert'; import w, { whoIs } from '../worker/index.js';
+/* v9.43: sign-in, users, permissions, log */
+const mkKv = () => { const m = new Map(); return { m, get: async (k, t) => { const v = m.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, put: async (k, v) => { m.set(k, v); }, delete: async k => { m.delete(k); }, list: async o => ({ keys: [...m.keys()].filter(k => k.startsWith(o.prefix || '')).sort().slice(0, o.limit || 1000).map(name => ({ name })), list_complete: true }) }; };
+const akv = mkKv(), aenv = { BRT_PASSWORD: 'secret1', BRT_KV: akv, ASSETS: { fetch: async () => new Response('page') } };
+const call = async (path, o, cookie) => { o = o || {}; const h = Object.assign({}, o.headers || {}); if (cookie) h.Cookie = cookie; if (o.json) { h['content-type'] = 'application/json'; o.body = JSON.stringify(o.json); o.method = o.method || 'POST'; } return w.fetch(new Request('https://x' + path, { method: o.method || 'GET', headers: h, body: o.body }), aenv); };
+const login = async (u, p) => { const r = await call('/api/auth/login', { json: { u, p } }); return { r, cookie: (r.headers.get('Set-Cookie') || '').split(';')[0] }; };
+let na = 0; const yes = (c, m) => { assert.ok(c, m); na++; }, eq = (a, b, m) => { assert.deepStrictEqual(a, b, m); na++; };
+eq((await w.fetch(new Request('https://x/'), { ASSETS: aenv.ASSETS })).status, 503, 'no secret -> closed');
+{ const r = await call('/'); yes(r.status === 200 && /Sign in/.test(await r.text()), 'no session -> sign-in page, never the tool'); }
+eq((await call('/api/claude-status')).status, 401, 'API without session');
+eq((await login('admin', 'wrong')).r.status, 401, 'wrong password');
+eq((await login('nobody', 'secret1')).r.status, 401, 'unknown user cannot use the admin password');
+const A = await login('Admin', 'secret1'); eq(A.r.status, 200, 'admin signs in (name not case-sensitive)'); yes(/HttpOnly/.test(A.r.headers.get('Set-Cookie')), 'cookie is HttpOnly');
+eq(await (await call('/', {}, A.cookie)).text(), 'page', 'signed in -> the tool');
+eq((await call('/', {}, A.cookie.slice(0, -3) + 'abc')).status === 200 && /Sign in/.test(await (await call('/', {}, A.cookie.slice(0, -3) + 'abc')).text()), true, 'tampered cookie refused');
+eq((await (await call('/api/auth/me', {}, A.cookie)).json()).role, 'admin');
+eq((await call('/api/admin/users', { json: { name: 'ab', password: 'longenough1' } }, A.cookie)).status, 400, 'bad user name');
+eq((await call('/api/admin/users', { json: { name: 'sara', password: 'short' } }, A.cookie)).status, 400, 'short password');
+eq((await call('/api/admin/users', { json: { name: 'sara', password: 'longenough1', sections: ['recovery', 'quick', 'nonsense'], funcs: ['upload', 'ai'] } }, A.cookie)).status, 200, 'user added');
+yes(!/longenough1/.test(akv.m.get('user:sara')), 'password is not stored');
+const U1 = await login('sara', 'longenough1'); eq(U1.r.status, 200, 'user signs in');
+{ const me = await (await call('/api/auth/me', {}, U1.cookie)).json(); eq([me.role, me.sections, me.funcs], ['user', ['recovery', 'quick'], ['upload']], 'only the permissions the admin gave'); }
+eq((await call('/api/admin/users', {}, U1.cookie)).status, 403, 'user cannot open admin routes');
+eq((await call('/api/admin/users', { json: { name: 'sara', sections: ['compare'] } }, U1.cookie)).status, 403, 'user cannot change permissions');
+eq((await call('/api/claude', { json: { model: 'claude-sonnet-5-5', messages: [] } }, U1.cookie)).status, 403, 'AI is admin only');
+eq((await call('/api/drive/token', {}, U1.cookie)).status, 403, 'Drive is admin only');
+eq((await call('/api/auth/login', { json: { u: 'admin', p: 'secret1' }, headers: { Origin: 'https://evil.example' } })).status, 403, 'cross-site post refused');
+await call('/api/log', { json: { events: [{ a: 'open section', d: 'recovery' }, { a: 'export', d: 'report.xlsx' }] } }, U1.cookie);
+{ const lg = await (await call('/api/admin/log', {}, A.cookie)).json(); yes(lg.rows.some(r => r.u === 'sara' && r.a === 'export' && r.d === 'report.xlsx') && lg.rows.some(r => r.a === 'sign-in failed') && lg.rows.some(r => r.u === 'admin' && r.a === 'user added'), 'log has user actions, failed sign-ins and admin changes'); }
+eq((await call('/api/admin/log', {}, U1.cookie)).status, 403, 'user cannot read the log');
+await call('/api/admin/users', { json: { name: 'sara', disabled: true } }, A.cookie);
+yes(/Sign in/.test(await (await call('/', {}, U1.cookie)).text()), 'disabled user is out at once'); eq((await login('sara', 'longenough1')).r.status, 401, 'disabled user cannot sign in');
+await call('/api/admin/users', { json: { name: 'sara', disabled: false, password: 'anotherpass2' } }, A.cookie);
+eq(await whoIs(new Request('https://x/', { headers: { Cookie: U1.cookie } }), aenv), null, 'password reset ends old sessions');
+eq((await login('sara', 'anotherpass2')).r.status, 200, 'new password works');
+for (let i = 0; i < 5; i++) await login('sara', 'nope'); eq((await login('sara', 'anotherpass2')).r.status, 429, 'locked after 5 wrong attempts');
+eq((await call('/api/admin/users?name=sara', { method: 'DELETE' }, A.cookie)).status, 200, 'user deleted'); akv.m.delete('fail:sara'); eq((await login('sara', 'anotherpass2')).r.status, 401, 'deleted user cannot sign in');
+{ const c = await (await call('/api/admin/cfg', { json: { sessionHours: 2, logDays: 30 } }, A.cookie)).json(); eq([c.sessionHours, c.logDays], [2, 30], 'settings saved'); }
+await call('/api/auth/logout', { method: 'POST' }, A.cookie);
 import { proxy } from '../worker/index.js';
 const U = p => new URL('https://x' + p), post = (b) => new Request('https://x/api/claude', { method: 'POST', body: JSON.stringify(b) });
 assert.deepStrictEqual(await (await proxy(new Request('https://x/api/claude-status'), {}, U('/api/claude-status'))).json(), { proxy: false });
@@ -35,4 +65,4 @@ assert.deepStrictEqual(await (await D('/api/drive/status')).json(), { configured
 assert.deepStrictEqual(await (await D('/api/drive/token')).json(), { access_token: 'AT', expires_in: 3599, scope: 'drive.file' });
 assert.deepStrictEqual(await (await D('/api/drive/disconnect', { method: 'POST' })).json(), { ok: true });
 assert.strictEqual((await D('/api/drive/token')).status, 401);
-console.log('worker: 6 + 7 + 12 checks passed');
+console.log('worker: ' + na + ' sign-in/permission + 7 + 12 checks passed');

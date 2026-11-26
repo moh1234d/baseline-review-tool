@@ -1,3 +1,9 @@
+## v9.43 (2026-11-26) — users, permissions and activity log
+- Sign-in page with user name and password (replaces the browser pop-up). One admin (password set in Cloudflare) and users the admin creates; passwords are kept only as salted hashes; sessions end after a set time; an account locks after repeated wrong passwords.
+- Administration → Users and activity log (admin only): add, edit, disable, delete users and reset passwords; tick the sections each user can open and the functions each can use (load files, export). AI, Google Drive and changing Setup are for the admin only, also enforced on the server.
+- Activity log for the admin: sign-in/out and wrong passwords, sections opened, files loaded (names only), exports, AI and Drive use, every admin change; filters and Excel export; retention, session length and lock rules are settings on the same page.
+- The offline file has no server and runs as before.
+
 ## v9.41 (2026-11-24) — review corrections (offline check first)
 - Summary strip at the top: one sentence (forecast, days late, how many work fronts hold the date together) and three data-confidence chips (same project, dates match P6, progress recorded).
 - Warning when the update records little or no progress since the previous file (share of in-progress activities with the same remaining duration, share of due activities not started; threshold in Setup).

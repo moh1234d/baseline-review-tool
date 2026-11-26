@@ -13,7 +13,8 @@ S.cfg.eid = LS.get('brt.eid', []);
 function toast(msg, kind) {
   let t = $('#toast'); t.textContent = msg; t.className = 'show ' + (kind || ''); clearTimeout(toast._t); toast._t = setTimeout(() => t.className = '', 4200);
 }
-function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+function download(blob, name) { if (typeof canDo === 'function' && AUTH.mode === 'online') { if (!canDo('export')) { brtLog('blocked', 'export ' + name); toast('Exporting is not enabled for your account. Ask the admin.', 'bad'); return; } brtLog('export', name); }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
 
 /* ---------- lazy libraries ---------- */
 const LIBS = {
